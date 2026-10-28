@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drift Browser</title>
+<meta name="description" content="Drift is a calm, fast browser for Windows: vertical tabs, a built-in ad blocker, and nothing in the way.">
+<meta name="theme-color" content="#16171a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#edeff2" media="(prefers-color-scheme: light)">
+<link rel="icon" href="icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta property="og:title" content="Drift: a calm, fast browser for Windows">
+<meta property="og:description" content="Vertical tabs, a built-in ad blocker, and nothing in the way. About 1 MB to download.">
+<meta property="og:image" content="https://lompendans.github.io/drift/icon-512.png">
+<style>
+:root {
+  --bg: #edeff2; --bg2: #e4e7eb; --fg: #17191d; --muted: #5d636d; --faint: #8d939c;
+  --card: #ffffff; --line: rgba(15, 23, 42, 0.09); --hover: rgba(15, 23, 42, 0.05);
+  --accent: #0d9a87; --accent2: #1c68d6; --accent-soft: rgba(13, 154, 135, 0.12); --on-accent: #fff;
+  --shadow: 0 0 0 1px rgba(15, 23, 42, 0.06), 0 20px 50px -12px rgba(15, 23, 42, 0.22);
+  --ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111215; --bg2: #16171a; --fg: #ececef; --muted: #a2a6ad; --faint: #737880;
+    --card: #1d1e22; --line: rgba(255, 255, 255, 0.08); --hover: rgba(255, 255, 255, 0.05);
+    --accent: #35c9b1; --accent2: #4a8df0; --accent-soft: rgba(53, 201, 177, 0.14); --on-accent: #06201c;
+    --shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 24px 60px -12px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 var(--ui); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+a { color: inherit; }
+.wrap { width: min(1120px, 100% - 32px); margin: 0 auto; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } html { scroll-behavior: auto; } }
+
+/* nav */
+nav { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(16px) saturate(1.4); background: color-mix(in srgb, var(--bg) 78%, transparent); border-bottom: 1px solid transparent; transition: border-color 0.2s; }
+nav.scrolled { border-bottom-color: var(--line); }
+nav .wrap { height: 60px; display: flex; align-items: center; gap: 24px; }
+.brand { display: flex; align-items: center; gap: 10px; font: 600 17px var(--display); text-decoration: none; }
+.brand img { width: 26px; height: 26px; }
+nav .links { display: flex; gap: 22px; margin-left: auto; font-size: 14px; }
+nav .links a { color: var(--muted); text-decoration: none; transition: color 0.15s; }
+nav .links a:hover { color: var(--fg); }
+nav .get { font-size: 14px; font-weight: 600; text-decoration: none; padding: 7px 14px; border-radius: 9px; background: var(--fg); color: var(--bg); }
+@media (max-width: 640px) { nav .links { display: none; } nav .get { margin-left: auto; } }
+
+/* hero */
+.hero { position: relative; padding: 72px 0 40px; text-align: center; overflow-x: clip; }
+.glow { position: absolute; inset: -120px 0 auto; height: 620px; pointer-events: none; z-index: -1;
+  background: radial-gradient(40% 50% at 30% 40%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
+              radial-gradient(40% 50% at 70% 35%, color-mix(in srgb, var(--accent2) 18%, transparent), transparent 70%);
+  filter: blur(20px); animation: drift 18s ease-in-out infinite alternate; }
+@keyframes drift { to { transform: translateX(40px) translateY(20px) scale(1.05); } }
+.hero .logo { width: 84px; height: 84px; border-radius: 24px; box-shadow: 0 18px 40px -12px rgba(28, 104, 214, 0.55); animation: rise 0.8s var(--ease) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+h1 { margin: 22px 0 10px; font: 700 clamp(40px, 7vw, 68px)/1.05 var(--display); letter-spacing: -1.5px; animation: rise 0.8s 0.08s var(--ease) both; }
+.lede { max-width: 600px; margin: 0 auto; font-size: clamp(17px, 2.2vw, 20px); color: var(--muted); animation: rise 0.8s 0.16s var(--ease) both; }
+.cta { margin-top: 32px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; animation: rise 0.8s 0.24s var(--ease) both; }
+.btn { display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 24px; border-radius: 14px; font-weight: 600; font-size: 16px; text-decoration: none; transition: transform 0.15s var(--ease), filter 0.15s, background 0.15s; }
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; box-shadow: 0 12px 30px -10px color-mix(in srgb, var(--accent2) 70%, transparent); }
+.btn.primary:hover { filter: brightness(1.07); transform: translateY(-1px); }
+.btn.quiet { background: var(--card); box-shadow: var(--shadow); }
+.btn.quiet:hover { background: color-mix(in srgb, var(--card) 85%, var(--fg)); }
+.btn svg { width: 20px; height: 20px; }
+.meta { margin-top: 16px; font-size: 13.5px; color: var(--faint); animation: rise 0.8s 0.3s var(--ease) both; }
+.meta b { color: var(--muted); font-weight: 600; }
+
+/* the browser picture */
+.shot { margin: 56px auto 0; width: min(1000px, 100%); aspect-ratio: 16 / 9.4; border-radius: 16px; background: var(--bg2); box-shadow: var(--shadow); display: grid; grid-template-columns: 22% 1fr; padding: 0 10px 10px 0; overflow: hidden; animation: rise 1s 0.35s var(--ease) both; text-align: left; font-size: clamp(8px, 1.15vw, 13px); }
+.s-side { padding: 0 8px 0 12px; display: flex; flex-direction: column; gap: 0.35em; min-width: 0; }
+.s-top { height: 3.6em; display: flex; align-items: center; gap: 0.6em; font-weight: 600; }
+.s-top i { width: 1.6em; height: 1.6em; border-radius: 0.5em; background: linear-gradient(135deg, #24c4aa, #1c68d6); }
+.s-new { height: 2.6em; display: flex; align-items: center; padding: 0 0.8em; border-radius: 0.6em; color: var(--muted); gap: 0.6em; }
+.s-tab { height: 2.6em; display: flex; align-items: center; gap: 0.6em; padding: 0 0.8em; border-radius: 0.6em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background 0.4s var(--ease), color 0.4s; }
+.s-tab b { flex: none; width: 1.2em; height: 1.2em; border-radius: 0.3em; }
+.s-tab.on { background: var(--card); color: var(--fg); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+.s-main { display: grid; grid-template-rows: 3.6em auto 1fr; min-width: 0; }
+.s-bar { display: flex; align-items: center; gap: 0.8em; }
+.s-dots { display: flex; gap: 0.9em; color: var(--faint); }
+.s-addr { flex: 1; max-width: 62%; margin: 0 auto; height: 2.5em; border-radius: 0.7em; background: var(--hover); display: flex; align-items: center; padding: 0 0.9em; gap: 0.5em; color: var(--muted); overflow: hidden; white-space: nowrap; }
+.s-addr span { color: var(--fg); font-weight: 500; }
+.s-shield { height: 2.5em; padding: 0 0.7em; border-radius: 0.7em; background: var(--hover); color: var(--accent); display: flex; align-items: center; gap: 0.35em; font-weight: 600; }
+.s-perm { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.5s var(--ease); }
+.s-perm.open { grid-template-rows: 1fr; }
+.s-perm > div { overflow: hidden; }
+.s-perm p { margin: 0 0 0.6em; height: 3.4em; display: flex; align-items: center; gap: 0.8em; padding: 0 0.6em; border-radius: 0.8em; background: var(--card); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); color: var(--muted); }
+.s-perm em { font-style: normal; width: 2.2em; height: 2.2em; border-radius: 0.6em; background: var(--accent-soft); display: grid; place-items: center; color: var(--accent); }
+.s-perm strong { color: var(--fg); }
+.s-perm .sp { margin-left: auto; display: flex; gap: 0.5em; }
+.s-perm .sp span { padding: 0.45em 1em; border-radius: 0.5em; background: var(--hover); color: var(--fg); font-weight: 600; }
+.s-perm .sp span.a { background: var(--accent); color: var(--on-accent); }
+.s-page { position: relative; border-radius: 0.8em; background: var(--card); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); overflow: hidden; padding: 6% 7%; }
+.s-page .ln { height: 0.9em; border-radius: 1em; background: var(--hover); margin-bottom: 0.9em; }
+.s-page .hd { height: 2.2em; width: 55%; border-radius: 0.5em; background: color-mix(in srgb, var(--fg) 12%, transparent); margin-bottom: 1.4em; }
+.s-page .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1em; margin-top: 1.6em; }
+.s-page .grid div { aspect-ratio: 4 / 3; border-radius: 0.7em; background: var(--hover); }
+.s-page .grid div.ad { background: repeating-linear-gradient(45deg, rgba(229, 72, 77, 0.18) 0 6px, transparent 6px 12px); transition: opacity 0.6s, transform 0.6s var(--ease); }
+.s-page .grid div.ad.gone { opacity: 0; transform: scale(0.9); }
+@media (max-width: 640px) { .shot { grid-template-columns: 0 1fr; padding-left: 10px; } .s-side { visibility: hidden; } .s-addr { max-width: none; } }
+
+/* sections */
+section { padding: 88px 0 0; }
+.kicker { font-size: 13px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--accent); }
+h2 { margin: 8px 0 12px; font: 700 clamp(28px, 4vw, 40px)/1.15 var(--display); letter-spacing: -0.8px; }
+.sub { max-width: 640px; color: var(--muted); margin: 0 0 36px; }
+.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .features { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .features { grid-template-columns: minmax(0, 1fr); } }
+.f { padding: 24px; border-radius: 18px; background: var(--card); box-shadow: var(--shadow); opacity: 0; transform: translateY(16px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); }
+.f.in { opacity: 1; transform: none; }
+.f .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); margin-bottom: 14px; }
+.f .ic svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.f h3 { margin: 0 0 6px; font: 600 17px var(--display); }
+.f p { margin: 0; color: var(--muted); font-size: 15px; }
+kbd { font: 12px var(--ui); padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); background: var(--hover); white-space: nowrap; }
+
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+@media (max-width: 860px) { .split { grid-template-columns: minmax(0, 1fr); gap: 24px; } }
+.privacy-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.privacy-list li { display: flex; gap: 14px; padding: 16px 18px; border-radius: 14px; background: var(--card); box-shadow: var(--shadow); }
+.privacy-list .tick { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; margin-top: 1px; }
+.privacy-list .tick svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.privacy-list b { display: block; font-weight: 600; }
+.privacy-list span { color: var(--muted); font-size: 15px; }
+.note { margin-top: 16px; font-size: 14px; color: var(--faint); }
+
+.steps { counter-reset: s; display: grid; gap: 14px; }
+.step { position: relative; padding: 18px 20px 18px 64px; border-radius: 14px; background: var(--card); box-shadow: var(--shadow); }
+.step::before { counter-increment: s; content: counter(s); position: absolute; left: 18px; top: 18px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
+.step b { display: block; }
+.step span { color: var(--muted); font-size: 15px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 15px; background: var(--card); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font-size: 13px; color: var(--faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; }
+td.y { color: var(--accent); font-weight: 600; white-space: nowrap; }
+td.n { color: var(--faint); font-weight: 600; white-space: nowrap; }
+
+details { border-radius: 14px; background: var(--card); box-shadow: var(--shadow); margin-bottom: 10px; }
+summary { cursor: pointer; list-style: none; padding: 16px 20px; font-weight: 600; display: flex; align-items: center; gap: 12px; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: ""; margin-left: auto; width: 9px; height: 9px; border-right: 2px solid var(--faint); border-bottom: 2px solid var(--faint); transform: rotate(45deg); transition: transform 0.25s var(--ease); flex: none; }
+details[open] summary::after { transform: rotate(225deg); }
+details p { margin: 0; padding: 0 20px 18px; color: var(--muted); }
+code { font: 13.5px "Cascadia Mono", Consolas, monospace; padding: 1px 5px; border-radius: 5px; background: var(--hover); overflow-wrap: anywhere; }
+
+.final { margin: 96px 0 0; padding: 56px 24px; border-radius: 24px; text-align: center; color: #fff; background: linear-gradient(135deg, #109b88, #1c68d6); position: relative; overflow: hidden; }
+.final h2 { color: #fff; }
+.final p { margin: 0 auto 28px; max-width: 520px; opacity: 0.88; }
+.final .btn { background: #fff; color: #10373a; }
+.final .btn:hover { transform: translateY(-1px); }
+footer { padding: 40px 0 48px; color: var(--faint); font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
+footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<nav id="nav"><div class="wrap">
+  <a class="brand" href="#"><img src="icon-180.png" alt="">Drift</a>
+  <div class="links"><a href="#features">Features</a><a href="#privacy">Privacy</a><a href="#install">Install</a><a href="#faq">FAQ</a></div>
+  <a class="get" href="https://github.com/lompendans/drift/releases/latest/download/DriftSetup.exe">Download</a>
+</div></nav>
+
+<header class="hero">
+  <div class="glow"></div>
+  <div class="wrap">
+    <img class="logo" src="icon-180.png" alt="Drift logo">
+    <h1>Browse calmly.</h1>
+    <p class="lede">Drift is a fast, quiet browser for Windows. Your tabs sit down the side, ads are gone before they load, and nothing pops up that you didn't ask for.</p>
+    <div class="cta">
+      <a class="btn primary" id="dl" href="https://github.com/lompendans/drift/releases/latest/download/DriftSetup.exe">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg>
+        Download for Windows
+      </a>
+      <a class="btn quiet" href="https://github.com/lompendans/drift/releases/latest/download/Drift-portable.zip">Portable .zip</a>
+    </div>
+    <p class="meta"><b id="ver">Latest version</b> · Windows 10 and 11 · about 1 MB · free</p>
+
+    <div class="shot" aria-label="A picture of Drift's window">
+      <div class="s-side">
+        <div class="s-top"><i></i>Drift</div>
+        <div class="s-new">＋ New tab</div>
+        <div class="s-tab on" data-i="0"><b style="background:#ea4335"></b>Inbox (3)</div>
+        <div class="s-tab" data-i="1"><b style="background:#1c68d6"></b>Weather · this week</div>
+        <div class="s-tab" data-i="2"><b style="background:#0d9a87"></b>Recipes for tonight</div>
+        <div class="s-tab" data-i="3"><b style="background:#a855f7"></b>Docs: getting started</div>
+      </div>
+      <div class="s-main">
+        <div class="s-bar">
+          <div class="s-dots"><span>‹</span><span>›</span><span>↻</span></div>
+          <div class="s-addr">🔒 <span id="sHost">mail.example.com</span></div>
+          <div class="s-shield">◈ <span id="sCount">0</span></div>
+        </div>
+        <div class="s-perm" id="sPerm"><div><p><em>🔔</em><span><strong>mail.example.com</strong> wants to show notifications</span><span class="sp"><span>Block</span><span class="a">Allow</span></span></p></div></div>
+        <div class="s-page">
+          <div class="hd"></div>
+          <div class="ln" style="width:92%"></div><div class="ln" style="width:84%"></div><div class="ln" style="width:70%"></div>
+          <div class="grid"><div></div><div class="ad" id="ad1"></div><div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="features">
+    <div class="kicker">What's inside</div>
+    <h2>Everything you use. Nothing you don't.</h2>
+    <p class="sub">Drift runs on Microsoft Edge's web engine, so sites work like they should. Everything around the page is Drift's own: small, quick, and out of your way.</p>
+    <div class="features">
+      <div class="f"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></div><h3>Tabs down the side</h3><p>Long titles stay readable. Drag to reorder, collapse with <kbd>Ctrl B</kbd>, and flip between recent tabs with <kbd>Ctrl Tab</kbd>, just like <kbd>Alt Tab</kbd>.</p></div>
+      <div class="f"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.5c0 4.3-2.9 8.1-7 9.5-4.1-1.4-7-5.2-7-9.5V6z"/><path d="M9 12l2 2 4-4"/></svg></div><h3>Ads blocked, built in</h3><p>Uses the same filter lists as uBlock Origin: EasyList, EasyPrivacy, annoyances and malware lists. No extension to install.</p></div>
+      <div class="f"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></div><h3>One box for everything</h3><p><kbd>Ctrl L</kbd> searches the web, your history and your open tabs at once. Your home page and search engine are yours to pick.</p></div>
+      <div class="f"><div class="ic"><svg viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg></div><h3>Polite prompts</h3><p>When a site asks for your camera, location or notifications, a slim bar slides in above the page instead of a pop-up in your face.</p></div>
+      <div class="f"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg></div><h3>Downloads you can see</h3><p>A progress ring in the toolbar and a clear list with pause, resume and "show in folder". <kbd>Ctrl J</kbd> opens it.</p></div>
+      <div class="f"><div class="ic"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></div><h3>Updates itself</h3><p>New versions download quietly and install the next time you close Drift. Your tabs come back exactly where you left them.</p></div>
+    </div>
+  </section>
+
+  <section id="privacy">
+    <div class="split">
+      <div>
+        <div class="kicker">Privacy</div>
+        <h2>Your browsing stays on your PC.</h2>
+        <p class="sub">Drift has no account, no sign-in and no analytics. There's no Drift server that could collect anything.</p>
+        <p class="note">Pages are shown by Microsoft Edge WebView2, which is part of Windows. Microsoft may collect diagnostic data from it according to your Windows privacy settings (Settings → Privacy &amp; security → Diagnostics &amp; feedback).</p>
+      </div>
+      <ul class="privacy-list">
+        <li><span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div><b>History, tabs and settings are local</b><span>They're saved in <code>%AppData%\Drift</code> and never uploaded. Clear them from History, or delete the folder.</span></div></li>
+        <li><span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div><b>No tracking, no telemetry</b><span>Drift doesn't count you, profile you or phone home about what you do.</span></div></li>
+        <li><span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div><b>Only two things go online on their own</b><span>Drift asks GitHub whether a new version is out (a few times a day), and downloads the ad-blocking lists every 4 days. Neither request includes anything about you or your browsing.</span></div></li>
+        <li><span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div><b>Trackers blocked by default</b><span>EasyPrivacy and uBlock's privacy lists stop most tracking scripts before they load.</span></div></li>
+        <li><span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div><b>Sites ask before they get anything</b><span>Camera, microphone, location and notifications are off until you allow them, and you can take that back in Settings → Site permissions.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="split">
+      <div>
+        <div class="kicker">Install</div>
+        <h2>Up and running in a minute.</h2>
+        <p class="sub">No administrator rights needed. Drift installs just for you, and the installer is under 1 MB.</p>
+        <div class="steps">
+          <div class="step"><b>Download <code>DriftSetup.exe</code></b><span>From the button at the top of this page.</span></div>
+          <div class="step"><b>Open it</b><span>If Windows shows "Windows protected your PC", choose <b style="display:inline">More info → Run anyway</b>. That happens for new apps that aren't signed with a paid certificate yet.</span></div>
+          <div class="step"><b>Click Install</b><span>Drift goes in your Start menu (and on your desktop if you like). Uninstall any time from Settings → Apps.</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="kicker">Requirements</div>
+        <h2>Works on</h2>
+        <table>
+          <tr><th>Windows</th><th>Drift</th></tr>
+          <tr><td>Windows 11</td><td class="y">Yes</td></tr>
+          <tr><td>Windows 10 (version 1607 or newer)</td><td class="y">Yes</td></tr>
+          <tr><td>Windows 7, 8 and 8.1</td><td class="n">No: Microsoft ended WebView2 there</td></tr>
+          <tr><td>64-bit, 32-bit and ARM PCs</td><td class="y">Yes</td></tr>
+        </table>
+        <p class="note">Drift also needs .NET Framework 4.8 and the WebView2 Runtime. Both come with Windows 11 and up-to-date Windows 10.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="kicker">FAQ</div>
+    <h2>Questions</h2>
+    <details><summary>Is Drift free?</summary><p>Yes. No ads, no paid tier, no account.</p></details>
+    <details><summary>Will websites work?</summary><p>Yes. Drift uses Microsoft Edge's engine (Chromium), the same one Edge and Chrome are built on, so modern sites, video and web apps work normally. If the ad blocker breaks a site, click the shield and turn it off for that site.</p></details>
+    <details><summary>How do updates work?</summary><p>Drift checks this project's GitHub releases when it starts and every few hours. A new version downloads in the background, is checked against the SHA-256 checksum GitHub publishes, and installs when you close Drift, or right away if you click "Update" in the toolbar.</p></details>
+    <details><summary>Can I use Drift without installing it?</summary><p>Yes. Download the portable .zip, unzip it anywhere and open <code>Drift.exe</code>. It updates itself in place, too.</p></details>
+    <details><summary>Can I import my bookmarks or passwords?</summary><p>Not yet. Drift doesn't have bookmarks or a password manager. Your sign-ins stay saved by the sites themselves.</p></details>
+    <details><summary>Is the source code available?</summary><p>No. Drift is distributed as a free download only.</p></details>
+    <details><summary>How do I uninstall it?</summary><p>Settings → Apps → Installed apps → Drift → Uninstall. You can choose to keep or delete your history and settings.</p></details>
+  </section>
+
+  <div class="final">
+    <h2>Give your tabs some room.</h2>
+    <p>Drift is free, small, and installs in a few seconds.</p>
+    <a class="btn" href="https://github.com/lompendans/drift/releases/latest/download/DriftSetup.exe">Download Drift</a>
+  </div>
+
+  <footer>
+    <span>© 2026 Drift · made by <a href="https://github.com/lompendans">lompendans</a></span>
+    <span><a href="https://github.com/lompendans/drift/releases">All releases</a> · <a href="https://lompendans.github.io/retro-explorer/">Retro Explorer</a></span>
+  </footer>
+</main>
+
+<script>
+// nav border once you scroll
+const nav = document.getElementById("nav");
+addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 8), { passive: true });
+
+// feature cards fade in as they scroll into view
+const io = new IntersectionObserver(es => es.forEach((e, i) => { if (e.isIntersecting) { setTimeout(() => e.target.classList.add("in"), i * 70); io.unobserve(e.target); } }), { threshold: 0.15 });
+document.querySelectorAll(".f").forEach(f => io.observe(f));
+
+// the window picture: switch tabs, block an ad, ask for notifications
+const hosts = ["mail.example.com", "weather.example.com", "recipes.example.com", "docs.example.com"];
+let i = 0, blocked = 0;
+const tabs = [...document.querySelectorAll(".s-tab")];
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function tick() {
+  i = (i + 1) % tabs.length;
+  tabs.forEach((t, n) => t.classList.toggle("on", n === i));
+  document.getElementById("sHost").textContent = hosts[i];
+  const ad = document.getElementById("ad1");
+  ad.classList.remove("gone");
+  setTimeout(() => { ad.classList.add("gone"); blocked += 3 + (i * 7) % 11; document.getElementById("sCount").textContent = blocked; }, 700);
+  document.getElementById("sPerm").classList.toggle("open", i === 0);
+}
+if (!reduce) { setTimeout(() => { document.getElementById("ad1").classList.add("gone"); document.getElementById("sCount").textContent = blocked = 12; document.getElementById("sPerm").classList.add("open"); }, 900); setInterval(tick, 3200); }
+
+// show the real latest version from GitHub (the page works without it)
+fetch("https://api.github.com/repos/lompendans/drift/releases/latest")
+  .then(r => r.ok ? r.json() : null)
+  .then(r => { if (r && r.tag_name) document.getElementById("ver").textContent = "Version " + r.tag_name.replace(/^v/, ""); })
+  .catch(() => {});
+</script>
+</body>
+</html>
