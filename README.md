@@ -5,7 +5,7 @@
 <h1 align="center">Drift</h1>
 
 <p align="center">
-  A calm, fast browser for Windows and Linux.<br>
+  A calm, fast browser for Windows, Linux and Android.<br>
   Tabs down the side, a built-in ad blocker, and nothing in the way.
 </p>
 
@@ -18,7 +18,7 @@
 
 <p align="center">
   <a href="https://github.com/lompendans/drift/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/lompendans/drift?label=release&color=0d9a87"></a>
-  <img alt="Windows and Linux" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-1c68d6">
+  <img alt="Windows, Linux and Android" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20Android-1c68d6">
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-555"></a>
 </p>
 
@@ -49,6 +49,17 @@
   <img src="docs/screenshots/menu.png" width="320" alt="Drift's right-click menu">
   &nbsp;
   <img src="docs/screenshots/notification.png" width="420" alt="A website notification shown by Drift">
+</p>
+
+### On Android
+
+The same Drift on your phone: the address bar at the bottom where your thumb is, a tab grid, the same ad blocker and filter lists, and the same calm design.
+
+<p align="center">
+  <img src="docs/screenshots/android-start.png" width="200" alt="Drift for Android: the start page">
+  <img src="docs/screenshots/android-page.png" width="200" alt="A news site in Drift for Android, with 25 ads and trackers blocked">
+  <img src="docs/screenshots/android-tabs.png" width="200" alt="The tab grid">
+  <img src="docs/screenshots/android-dark.png" width="200" alt="The long-press menu on a link, in dark mode">
 </p>
 
 ## Install
@@ -89,11 +100,19 @@ Or download a file yourself:
 | [`Drift-x86_64.AppImage`](https://github.com/lompendans/drift/releases/latest/download/Drift-x86_64.AppImage) | Any distribution: `chmod +x Drift-x86_64.AppImage && ./Drift-x86_64.AppImage` (needs FUSE 2: `libfuse2`, `fuse-libs` or `fuse2`) |
 | [`Drift-linux-x64.tar.gz`](https://github.com/lompendans/drift/releases/latest/download/Drift-linux-x64.tar.gz) | Plain files: unpack and run `drift/drift` |
 
+### Android
+
+1. On your phone, download **[Drift-android.apk](https://github.com/lompendans/drift/releases/latest/download/Drift-android.apk)** (under 1 MB).
+2. Open it. Android asks once whether your browser (or Files app) may install apps; allow it, then tap **Install**.
+3. To make Drift your default browser: Settings → Apps → Default apps → Browser app → Drift.
+
+Works on Android 8 and newer. Drift for Android draws pages with Android System WebView, the Chromium engine that's already on your phone (Google Play keeps it updated), which is why it's so small. It updates itself: when a new version is out, About Drift shows **Install**.
+
 ### Updating
 
 Drift checks for a new version when it starts and every few hours. It downloads in the background, is checked against its SHA-256 checksum, and installs when you close Drift (or right away from the update button in the toolbar). Your tabs come back where you left them.
 
-- **Windows installer and portable zip, Linux AppImage:** automatic.
+- **Windows installer and portable zip, Linux AppImage, Android:** automatic (on Android you tap Install when it's ready).
 - **Linux .deb and .tar.gz:** Drift tells you when a new version is out; run the install command again (or `sudo apt install ./drift_amd64.deb` with the new file).
 - **Drift 1.x** updates itself to 2.0 like any other update, and keeps your tabs, history, bookmarks, settings and extensions.
 
@@ -136,7 +155,8 @@ Drift has no account, no sign-in and no analytics, and there's no Drift server t
 
 - **Extensions:** Drift runs Chrome extensions with Electron's extension support, which covers less than Chrome does. Extensions that change pages (dark modes, page tweaks, content blockers) work best; ones that need newer Chrome features, such as capturing a tab's sound, may not. The install buttons on store pages don't work in Drift; use the "Add to Drift" bar that Drift shows above the store page instead.
 - **Passwords** can't be imported from other browsers (they're encrypted to each browser), so you sign in to sites once in Drift.
-- **macOS** isn't built yet.
+- **macOS and iPhone** aren't built yet.
+- **Android:** there are no extensions (Android's WebView doesn't run them), and websites can't show notifications. A site's own `alert()` and `confirm()` boxes are drawn by Android in Drift's style rather than by Drift's web interface, because Android pauses every web view in an app while a page waits for an answer.
 - **Size:** Drift 2 carries its own copy of Chromium, so it's about 160 MB to download. (Drift 1 was about 1 MB because it borrowed Windows' Edge WebView2, which also tied it to Windows.)
 
 ## Build it yourself
@@ -160,9 +180,12 @@ That runs Drift from source with your normal Drift profile. To try changes witho
 |---|---|---|
 | `.\build-release.ps1 -Version 2.0.1` | `release/DriftSetup.exe`, `release/Drift-portable.zip` | Windows, Node.js, the [.NET SDK](https://dotnet.microsoft.com/download) (for the installer) |
 | `.\build-linux.ps1` | `release/Drift-x86_64.AppImage`, `release/drift_amd64.deb`, `release/Drift-linux-x64.tar.gz` | [Docker](https://www.docker.com/) (it builds inside a Linux container) |
+| `.\build-android.ps1` | `release/Drift-android.apk` | The Android SDK (Android Studio installs it) and Drift's signing key in `signing/` (see below) |
 | `node build/package.js linux x64` (in `app/`) | An unpacked Linux build in `app/out/` | Node.js; run on Linux to keep file permissions |
 
-The file names never change between versions, so `releases/latest/download/<name>` links keep working and the updater can find them. Publish all five files on a release tagged `v<version>`.
+The file names never change between versions, so `releases/latest/download/<name>` links keep working and the updater can find them. Publish all six files on a release tagged `v<version>`.
+
+The Android app must always be signed with the same key, or phones refuse to install an update over the old version. The key isn't in this repository: `build-android.ps1` reads it from `signing/keystore.properties` (or the file `DRIFT_KEYSTORE` points to). Builds from a fork need their own key and a different `applicationId`.
 
 ### How it fits together
 
@@ -188,6 +211,10 @@ app/                      Drift itself (Electron)
   build/                  icons, packaging (package.js) and the Linux build (linux.sh)
   test/                   a test hook for driving Drift from scripts (only loaded from source)
 installer/                DriftSetup.exe: the Windows installer and updater (C#, .NET Framework 4.8)
+android/                  Drift for Android (Kotlin + Android System WebView)
+  app/src/main/assets/ui/mobile.html   the phone interface: bar, tab grid, menus, panels
+  app/src/main/java/…/MainActivity.kt  tabs, page views, prompts, downloads, messages to and from the UI
+  app/src/main/java/…/FilterEngine.kt  the same filter engine as desktop, in Kotlin
 install.sh                the Linux install script
 index.html                the download page (lompendans.github.io/drift)
 ```

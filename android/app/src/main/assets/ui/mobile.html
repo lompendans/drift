@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Drift</title>
+<style>
+/* Drift for Android. Normally only the bar at the bottom is showing (this page sits over just that strip); when a
+   panel opens, the page covers the screen over a blurred picture of the web page, like desktop Drift's palette. */
+:root {
+  --bg: #edeff2; --fg: #17191d; --muted: #646a74; --faint: #9aa0a9;
+  --hover: rgba(15, 23, 42, 0.06); --press: rgba(15, 23, 42, 0.1); --active: #ffffff; --line: rgba(15, 23, 42, 0.08);
+  --accent: #0d9a87; --accent-soft: rgba(13, 154, 135, 0.12); --page: #ffffff; --pop: #ffffff; --scrim: rgba(12, 16, 24, 0.28);
+  --danger: #e5484d; --shadow-pop: 0 0 0 1px rgba(15, 23, 42, 0.06), 0 -10px 40px rgba(15, 23, 42, 0.16);
+  --ui: system-ui, "Roboto", "Segoe UI", sans-serif; --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --top: 0px; --bottom: 0px; --ime: 0px; --bar: 64px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16171a; --fg: #ececef; --muted: #a2a6ad; --faint: #6e737b;
+    --hover: rgba(255, 255, 255, 0.07); --press: rgba(255, 255, 255, 0.11); --active: #27282d; --line: rgba(255, 255, 255, 0.08);
+    --accent: #35c9b1; --accent-soft: rgba(53, 201, 177, 0.16); --page: #202124; --pop: #222327; --scrim: rgba(0, 0, 0, 0.5);
+    --shadow-pop: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 -10px 40px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+body { color: var(--fg); font: 15px/1.4 var(--ui); user-select: none; -webkit-user-select: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; }
+input { font: inherit; color: inherit; }
+:focus { outline: none; }
+svg { display: block; }
+.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- the stage behind panels: Drift's background, the page's picture in its card ---------- */
+#stage { position: fixed; inset: 0; background: var(--bg); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+body.full #stage { opacity: 1; pointer-events: auto; }
+#card { position: absolute; left: 0; right: 0; top: var(--top); bottom: calc(var(--bar) + var(--bottom)); border-radius: 16px; overflow: hidden; background: var(--page); }
+#snap { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; transition: filter 0.3s var(--ease), transform 0.3s var(--ease); }
+body.panel #snap { filter: blur(14px) saturate(1.1) brightness(0.85); transform: scale(1.04); }
+#scrim { position: fixed; inset: 0; background: var(--scrim); opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+body.panel #scrim { opacity: 1; pointer-events: auto; }
+
+/* ---------- error card (in the page's place) ---------- */
+#err { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; padding: 28px 26px 40px; background: var(--page); overflow-y: auto; }
+#err .eicon { width: 52px; height: 52px; border-radius: 15px; background: var(--hover); color: var(--muted); display: grid; place-items: center; margin-bottom: 18px; }
+#err .eicon .i { width: 26px; height: 26px; }
+#err h1 { margin: 0 0 8px; font-size: 22px; line-height: 1.25; overflow-wrap: anywhere; }
+#err p { margin: 0 0 14px; color: var(--muted); }
+#err ul { margin: 0 0 22px; padding-left: 18px; color: var(--muted); font-size: 14px; display: grid; gap: 6px; }
+#err .row { display: flex; gap: 10px; flex-wrap: wrap; }
+#err code { margin-top: 18px; font: 12px monospace; color: var(--faint); }
+
+/* ---------- the bar ---------- */
+#bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 0 8px var(--bottom); background: var(--bg); z-index: 20; transition: transform 0.25s var(--ease); }
+#progress { position: absolute; top: 0; left: 0; height: 2px; width: 0; background: var(--accent); border-radius: 2px; opacity: 0; transition: width 0.25s, opacity 0.3s; }
+#progress.on { opacity: 1; }
+.barrow { height: 64px; display: flex; align-items: center; gap: 4px; }
+.ib { width: 44px; height: 44px; flex: none; border-radius: 12px; display: grid; place-items: center; color: var(--fg); transition: background 0.12s, opacity 0.15s; }
+.ib:active { background: var(--press); }
+.ib:disabled { opacity: 0.32; }
+#addr { flex: 1; min-width: 0; height: 44px; border-radius: 14px; background: var(--hover); display: flex; align-items: center; gap: 8px; padding: 0 6px 0 12px; text-align: left; }
+#addr:active { background: var(--press); }
+#addr .lock { width: 16px; height: 16px; flex: none; color: var(--muted); }
+#addr .host { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 15px; }
+#addr .host.ph { color: var(--muted); font-weight: 500; }
+#shieldBtn { height: 32px; min-width: 32px; padding: 0 7px; border-radius: 10px; display: flex; align-items: center; gap: 4px; color: var(--accent); font-size: 13px; font-weight: 700; flex: none; }
+#shieldBtn .i { width: 18px; height: 18px; }
+#shieldBtn[data-state="off"], #shieldBtn[data-state="allowed"] { color: var(--faint); }
+#shieldBtn:active { background: var(--press); }
+#tabsBtn .count { width: 22px; height: 22px; border: 2px solid currentColor; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+
+/* the permission question, just above the bar */
+#prompt { margin: 0 0 2px; padding: 12px 12px 12px 14px; border-radius: 16px; background: var(--pop); box-shadow: var(--shadow-pop); display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; align-items: center; animation: up 0.3s var(--ease); }
+#prompt .pic { width: 36px; height: 36px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+#prompt .pt { font-size: 14px; }
+#prompt .pt b { overflow-wrap: anywhere; }
+#prompt .pa { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
+@keyframes up { from { transform: translateY(20px); opacity: 0; } }
+
+/* ---------- buttons ---------- */
+.btn { height: 42px; padding: 0 18px; border-radius: 12px; background: var(--hover); font-weight: 600; font-size: 14.5px; }
+.btn:active { background: var(--press); }
+.btn.primary { background: var(--accent); color: #fff; }
+@media (prefers-color-scheme: dark) { .btn.primary { color: #06201c; } }
+.btn.danger { color: var(--danger); }
+.btn:disabled { opacity: 0.45; }
+
+/* ---------- sheets (menus and panels slide up from the bottom) ---------- */
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: calc(100% - var(--top) - 24px); display: flex; flex-direction: column; background: var(--pop); border-radius: 22px 22px 0 0; box-shadow: var(--shadow-pop); padding: 8px 0 calc(var(--bottom) + 8px); transform: translateY(105%); visibility: hidden; transition: transform 0.3s var(--ease), visibility 0s 0.3s; z-index: 30; }
+.sheet.open { visibility: visible; transition: transform 0.3s var(--ease), visibility 0s; }
+.sheet.open { transform: none; }
+.sheet .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--line); margin: 2px auto 8px; flex: none; }
+.sheet .head { display: flex; align-items: center; gap: 10px; padding: 4px 18px 10px; flex: none; }
+.sheet .head h2 { margin: 0; flex: 1; font-size: 19px; }
+.sheet .head .sub { color: var(--muted); font-size: 13px; }
+.sheet .body { overflow-y: auto; padding: 0 10px; flex: 1; min-height: 0; overscroll-behavior: contain; }
+.row { width: 100%; min-height: 50px; display: flex; align-items: center; gap: 14px; padding: 8px 12px; border-radius: 12px; text-align: left; }
+.row:active { background: var(--hover); }
+.row .i { color: var(--muted); flex: none; }
+.row .t { flex: 1; min-width: 0; }
+.row .t b, .row .t span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .t b { font-weight: 600; }
+.row .t span { color: var(--muted); font-size: 13px; }
+.row .end { color: var(--faint); font-size: 13px; flex: none; }
+.row .fav { width: 22px; height: 22px; border-radius: 5px; flex: none; display: grid; place-items: center; color: var(--muted); overflow: hidden; }
+.row .fav img { width: 100%; height: 100%; }
+.row .x { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: var(--faint); flex: none; margin-right: -6px; }
+.row .x:active { background: var(--press); }
+.row .x .i { width: 18px; height: 18px; }
+.sep { height: 1px; background: var(--line); margin: 6px 12px; }
+.quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 0 12px 10px; }
+.quick button { height: 64px; border-radius: 16px; background: var(--hover); display: grid; place-items: center; align-content: center; gap: 5px; font-size: 12px; color: var(--muted); }
+.quick button .i { color: var(--fg); }
+.quick button.on { background: var(--accent-soft); color: var(--accent); }
+.quick button.on .i { color: var(--accent); fill: var(--accent-soft); }
+.quick button:disabled { opacity: 0.4; }
+.empty { padding: 30px 16px; text-align: center; color: var(--muted); font-size: 14px; }
+.label { padding: 14px 12px 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--faint); }
+.toggle { width: 44px; height: 26px; border-radius: 13px; background: var(--press); position: relative; flex: none; transition: background 0.2s; }
+.toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: transform 0.2s var(--ease); }
+.toggle.on { background: var(--accent); }
+.toggle.on::after { transform: translateX(18px); }
+.radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--faint); flex: none; }
+.radio.on { border: 6px solid var(--accent); }
+.search { margin: 0 12px 8px; height: 42px; border-radius: 12px; background: var(--hover); display: flex; align-items: center; gap: 8px; padding: 0 12px; }
+.search .i { width: 18px; height: 18px; color: var(--muted); }
+.search input { flex: 1; min-width: 0; background: none; border: 0; height: 100%; }
+.foot { display: flex; gap: 8px; padding: 10px 16px 0; flex: none; }
+.foot .btn { flex: 1; }
+
+/* ---------- search (the address palette) ---------- */
+#pal { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; padding: var(--top) 0 0; opacity: 0; pointer-events: none; transition: opacity 0.18s; }
+#pal.open { opacity: 1; pointer-events: auto; }
+#palList { flex: 1; overflow-y: auto; display: flex; flex-direction: column-reverse; padding: 12px 10px 6px; overscroll-behavior: contain; }
+#palList .row { background: var(--pop); margin-top: 2px; border-radius: 0; }
+#palList .row:first-child { border-radius: 0 0 16px 16px; }
+#palList .row:last-child { border-radius: 16px 16px 0 0; }
+#palList .row:only-child { border-radius: 16px; }
+#palList .row.sel { background: color-mix(in srgb, var(--accent) 14%, var(--pop)); }
+#palList .row .tag { font-size: 12px; color: var(--accent); font-weight: 600; flex: none; }
+#palBox { margin: 6px 10px calc(max(var(--bottom), var(--ime)) + 10px); height: 54px; border-radius: 18px; background: var(--pop); box-shadow: var(--shadow-pop); display: flex; align-items: center; gap: 6px; padding: 0 6px 0 16px; flex: none; transform: translateY(16px); transition: transform 0.25s var(--ease), margin 0.2s; }
+#pal.open #palBox { transform: none; }
+#palBox .i { width: 20px; height: 20px; color: var(--muted); flex: none; }
+#q { flex: 1; min-width: 0; height: 100%; border: 0; background: none; font-size: 16px; user-select: text; -webkit-user-select: text; }
+#qClear { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--faint); flex: none; }
+
+/* ---------- tab grid ---------- */
+#grid { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; padding-top: var(--top); background: var(--bg); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+#grid.open { opacity: 1; pointer-events: auto; }
+#grid .ghead { display: flex; align-items: center; padding: 10px 18px 6px; gap: 8px; }
+#grid .ghead h2 { flex: 1; margin: 0; font-size: 20px; }
+#gridList { flex: 1; overflow-y: auto; padding: 8px 12px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; align-content: start; overscroll-behavior: contain; }
+.gc { position: relative; border-radius: 16px; background: var(--pop); overflow: hidden; box-shadow: 0 0 0 1px var(--line); text-align: left; transform: scale(0.94); opacity: 0; transition: transform 0.3s var(--ease), opacity 0.25s, box-shadow 0.15s; }
+#grid.open .gc { transform: none; opacity: 1; }
+.gc.on { box-shadow: 0 0 0 2.5px var(--accent); }
+.gc .gt { display: flex; align-items: center; gap: 7px; padding: 8px 6px 8px 10px; font-size: 13px; font-weight: 600; }
+.gc .gt span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gc .gt img, .gc .gt .gl { width: 16px; height: 16px; border-radius: 4px; flex: none; }
+.gc .gt .gl { color: var(--muted); }
+.gc .gx { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: var(--muted); flex: none; }
+.gc .gx .i { width: 16px; height: 16px; }
+.gc .shot { aspect-ratio: 3 / 4; background: var(--page) center top / cover no-repeat; display: grid; place-items: center; color: var(--faint); }
+.gc .shot .i { width: 34px; height: 34px; }
+.gc.closing { transform: scale(0.8); opacity: 0; }
+#grid .gfoot { display: flex; gap: 10px; padding: 10px 16px calc(var(--bottom) + 12px); }
+#grid .gfoot .btn { flex: 1; height: 48px; border-radius: 14px; }
+
+/* ---------- dialog ---------- */
+#dlg { position: fixed; left: 16px; right: 16px; top: 50%; z-index: 40; background: var(--pop); border-radius: 22px; padding: 22px 20px 16px; box-shadow: var(--shadow-pop); transform: translateY(-40%) scale(0.96); opacity: 0; pointer-events: none; transition: transform 0.25s var(--ease), opacity 0.2s; max-height: 80%; display: flex; flex-direction: column; }
+#dlg.open { transform: translateY(-50%); opacity: 1; pointer-events: auto; }
+#dlg.kb { top: auto; bottom: calc(var(--ime) + 16px); transform: none; }
+#dlg h2 { margin: 0 0 4px; font-size: 18px; overflow-wrap: anywhere; }
+#dlg .dsub { color: var(--muted); font-size: 14px; margin: 0 0 6px; }
+#dlg .dmsg { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto; font-size: 15px; user-select: text; -webkit-user-select: text; }
+#dlg .dfields { display: grid; gap: 8px; margin-top: 14px; }
+#dlg input { height: 46px; border-radius: 12px; border: 1px solid var(--line); background: var(--hover); padding: 0 14px; user-select: text; -webkit-user-select: text; }
+#dlg input:focus { border-color: var(--accent); }
+#dlg .dact { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
+/* ---------- about / shield ---------- */
+.hero { display: flex; gap: 14px; align-items: center; padding: 0 12px 14px; }
+.hero .logo { width: 52px; height: 52px; border-radius: 15px; background: linear-gradient(135deg, #24c4aa, #1c68d6); display: grid; place-items: center; flex: none; }
+.hero h3 { margin: 0; font-size: 19px; }
+.hero p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 12px 6px; }
+.stats div { border-radius: 14px; background: var(--hover); padding: 10px 12px; }
+.stats b { display: block; font-size: 18px; }
+.stats span { font-size: 12px; color: var(--muted); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; padding: 6px 12px 10px; font-size: 13px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+.big { display: flex; gap: 14px; align-items: center; padding: 0 12px 12px; }
+.big .bi { width: 52px; height: 52px; border-radius: 15px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: none; }
+.big h3 { margin: 0; font-size: 18px; }
+.big p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.bars .bar { position: relative; height: 38px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; margin: 4px 12px; border-radius: 10px; overflow: hidden; font-size: 14px; }
+.bars .bar i { position: absolute; inset: 0 auto 0 0; background: var(--accent-soft); border-radius: 10px; }
+.bars .bar span { position: relative; }
+.upd { margin: 4px 12px 8px; padding: 12px 14px; border-radius: 14px; background: var(--hover); display: flex; align-items: center; gap: 12px; }
+.upd .t { flex: 1; min-width: 0; }
+.upd b { display: block; }
+.upd span { color: var(--muted); font-size: 13px; }
+.dl .meter { height: 4px; border-radius: 2px; background: var(--hover); overflow: hidden; margin-top: 6px; }
+.dl .meter i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+
+#toast { position: fixed; left: 50%; bottom: calc(var(--bar) + var(--bottom) + 12px); transform: translate(-50%, 10px); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.25s var(--ease); z-index: 50; white-space: nowrap; }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+  <symbol id="i-fwd" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></symbol>
+  <symbol id="i-reload" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="18.5" r="1.4" fill="currentColor"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5.5c0 4.3-2.9 8.1-7 9.5-4.1-1.4-7-5.2-7-9.5V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-shield-off" viewBox="0 0 24 24"><path d="M12 3l7 3v5.5c0 4.3-2.9 8.1-7 9.5-4.1-1.4-7-5.2-7-9.5V6z"/><path d="M4 4l16 16"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.25 4.1 1 5.85L12 16.9l-5.25 2.75 1-5.85L3.5 9.7l5.9-.9z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/></symbol>
+  <symbol id="i-desktop" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+  <symbol id="i-tab" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 9h18"/><path d="M12 12v5M9.5 14.5h5"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-update" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5L12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="e-dns" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8M8.5 8.5l4 4M12.5 8.5l-4 4"/></symbol>
+  <symbol id="e-offline" viewBox="0 0 24 24"><path d="M2 8.8a15 15 0 0 1 4.2-2.6M10.7 5a15 15 0 0 1 11.3 3.8M5.2 12.4a10 10 0 0 1 3.9-2.2M15.2 10.6a10 10 0 0 1 3.6 1.8M8.6 15.9a5 5 0 0 1 6.8 0M12 19.5h.01M3 3l18 18"/></symbol>
+  <symbol id="e-connect" viewBox="0 0 24 24"><path d="M17.5 19H8a5 5 0 1 1 1-9.9A6 6 0 0 1 20.6 11 4 4 0 0 1 17.5 19z"/><path d="M10 12l4 4M14 12l-4 4"/></symbol>
+  <symbol id="e-timeout" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6M12 2v3"/></symbol>
+  <symbol id="e-cert" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2M12 15v2"/></symbol>
+  <symbol id="e-redirect" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></symbol>
+  <symbol id="e-unknown" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 12v3M12 18h.01"/></symbol>
+  </defs>
+</svg>
+
+<div id="stage">
+  <div id="card">
+    <img id="snap" alt="">
+    <div id="err" hidden>
+      <div class="eicon"><svg class="i"><use id="errIcon" href="#e-unknown"/></svg></div>
+      <h1 id="errTitle"></h1>
+      <p id="errText"></p>
+      <ul id="errTips"></ul>
+      <div class="row"><button class="btn primary" id="errRetry">Try again</button><button class="btn" id="errSearch"></button></div>
+      <code id="errCode"></code>
+    </div>
+  </div>
+</div>
+<div id="scrim"></div>
+
+<div id="bar">
+  <div id="progress"></div>
+  <div id="prompt" hidden>
+    <div class="pic"><svg class="i"><use id="promptIcon" href="#i-globe"/></svg></div>
+    <div class="pt" id="promptText"></div>
+    <div class="pa"><button class="btn" id="pDismiss">Not now</button><button class="btn" id="pBlock">Block</button><button class="btn primary" id="pAllow">Allow</button></div>
+  </div>
+  <div class="barrow">
+    <button class="ib" id="backBtn" aria-label="Back"><svg class="i"><use href="#i-back"/></svg></button>
+    <button id="addr" aria-label="Search or type address">
+      <svg class="lock i"><use id="addrIcon" href="#i-search"/></svg>
+      <span class="host ph" id="addrText">Search or type address</span>
+      <span id="shieldBtn" role="button" aria-label="Ad blocker" hidden><svg class="i"><use id="shieldIcon" href="#i-shield"/></svg><span id="shieldCount"></span></span>
+    </button>
+    <button class="ib" id="tabsBtn" aria-label="Tabs"><span class="count" id="tabCount">1</span></button>
+    <button class="ib" id="menuBtn" aria-label="Menu"><svg class="i"><use href="#i-dots"/></svg></button>
+  </div>
+</div>
+
+<!-- search and addresses -->
+<div id="pal">
+  <div id="palList"></div>
+  <div id="palBox">
+    <svg class="i"><use href="#i-search"/></svg>
+    <input id="q" type="url" inputmode="url" enterkeyhint="go" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Search or type address">
+    <button id="qClear" aria-label="Clear"><svg class="i" style="width:18px;height:18px"><use href="#i-x"/></svg></button>
+  </div>
+</div>
+
+<!-- tabs -->
+<div id="grid">
+  <div class="ghead"><h2 id="gridTitle">Tabs</h2><button class="btn" id="closeAll">Close all</button></div>
+  <div id="gridList"></div>
+  <div class="gfoot"><button class="btn primary" id="gridNew">New tab</button><button class="btn" id="gridDone">Done</button></div>
+</div>
+
+<!-- the menu -->
+<div class="sheet" id="menu">
+  <div class="grab"></div>
+  <div class="quick">
+    <button id="mFwd"><svg class="i"><use href="#i-fwd"/></svg>Forward</button>
+    <button id="mReload"><svg class="i"><use id="mReloadIcon" href="#i-reload"/></svg><span id="mReloadText">Reload</span></button>
+    <button id="mStar"><svg class="i"><use href="#i-star"/></svg><span id="mStarText">Bookmark</span></button>
+    <button id="mShare"><svg class="i"><use href="#i-share"/></svg>Share</button>
+  </div>
+  <div class="body">
+    <button class="row" id="mNew"><svg class="i"><use href="#i-plus"/></svg><span class="t"><b>New tab</b></span></button>
+    <button class="row" id="mBookmarks"><svg class="i"><use href="#i-star"/></svg><span class="t"><b>Bookmarks</b></span></button>
+    <button class="row" id="mHistory"><svg class="i"><use href="#i-clock"/></svg><span class="t"><b>History</b></span></button>
+    <button class="row" id="mDownloads"><svg class="i"><use href="#i-download"/></svg><span class="t"><b>Downloads</b></span></button>
+    <button class="row" id="mShield"><svg class="i"><use href="#i-shield"/></svg><span class="t"><b>Ad blocker</b></span><span class="end" id="mShieldEnd"></span></button>
+    <button class="row" id="mDesktop"><svg class="i"><use href="#i-desktop"/></svg><span class="t"><b>Desktop site</b></span><span class="toggle" id="mDesktopT"></span></button>
+    <div class="sep"></div>
+    <button class="row" id="mSettings"><svg class="i"><use href="#i-gear"/></svg><span class="t"><b>Settings</b></span></button>
+    <button class="row" id="mAbout"><svg class="i"><use href="#i-info"/></svg><span class="t"><b>About Drift</b></span><span class="end" id="mAboutEnd"></span></button>
+  </div>
+</div>
+
+<!-- a list: bookmarks, history or downloads -->
+<div class="sheet" id="list">
+  <div class="grab"></div>
+  <div class="head"><h2 id="listTitle"></h2><button class="btn" id="listClear" hidden>Clear</button></div>
+  <div class="search" id="listSearch"><svg class="i"><use href="#i-search"/></svg><input id="listQ" placeholder="Search" autocomplete="off" spellcheck="false"></div>
+  <div class="body" id="listBody"></div>
+</div>
+
+<!-- ad blocker -->
+<div class="sheet" id="shield">
+  <div class="grab"></div>
+  <div class="big"><div class="bi"><svg class="i"><use href="#i-shield"/></svg></div><div><h3 id="shTitle"></h3><p id="shSub"></p></div></div>
+  <div class="body">
+    <button class="row" id="shSite"><span class="t"><b id="shSiteText"></b><span>Turn this off if the site doesn't work right.</span></span><span class="toggle" id="shSiteT"></span></button>
+    <div class="bars" id="shBars"></div>
+  </div>
+  <div class="foot"><span class="sub" id="shFoot" style="flex:1;color:var(--muted);font-size:13px;align-self:center"></span></div>
+</div>
+
+<!-- settings -->
+<div class="sheet" id="settings">
+  <div class="grab"></div>
+  <div class="head"><h2>Settings</h2></div>
+  <div class="body">
+    <div class="label">Search with</div>
+    <div id="engines"></div>
+    <div id="themeBox">
+      <div class="label">Appearance</div>
+      <div id="themes"></div>
+    </div>
+    <div class="label">Ad blocker</div>
+    <button class="row" id="sAdblock"><svg class="i"><use href="#i-shield"/></svg><span class="t"><b>Block ads and trackers</b><span id="sAdblockSub"></span></span><span class="toggle" id="sAdblockT"></span></button>
+    <button class="row" id="sLists"><svg class="i"><use href="#i-reload"/></svg><span class="t"><b>Update filter lists</b><span id="sListsSub"></span></span></button>
+    <div class="label">Privacy</div>
+    <button class="row" id="sPerms"><svg class="i"><use href="#i-lock"/></svg><span class="t"><b>Site permissions</b><span>What websites are allowed to do</span></span></button>
+    <button class="row" id="sClearHist"><svg class="i"><use href="#i-clock"/></svg><span class="t"><b>Clear history</b></span></button>
+    <button class="row" id="sClearAll"><svg class="i"><use href="#i-trash"/></svg><span class="t"><b>Clear history, cookies and site data</b><span>Signs you out of websites</span></span></button>
+  </div>
+</div>
+
+<!-- about -->
+<div class="sheet" id="about">
+  <div class="grab"></div>
+  <div class="hero"><div class="logo"><svg viewBox="0 0 64 64" width="34" height="34"><path d="M14 38C24 22 34 46 50 26" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/><path d="M16 48C26 36 36 54 48 40" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="4" stroke-linecap="round"/></svg></div><div><h3>Drift</h3><p id="aVer"></p></div></div>
+  <div class="upd"><div class="t"><b id="uTitle">Drift</b><span id="uSub"></span></div><button class="btn" id="uBtn">Check for updates</button></div>
+  <div class="body">
+    <div class="stats"><div><b id="aTabs">–</b><span>Tabs</span></div><div><b id="aBlocked">–</b><span>Blocked</span></div><div><b id="aHistory">–</b><span>Pages in history</span></div></div>
+    <dl class="kv" id="aKv"></dl>
+    <button class="row" id="aSource"><svg class="i"><use href="#i-link"/></svg><span class="t"><b>Source code</b><span>github.com/lompendans/drift</span></span></button>
+  </div>
+</div>
+
+<!-- long-press on a link or image -->
+<div class="sheet" id="link">
+  <div class="grab"></div>
+  <div class="head"><span class="sub" id="linkUrl" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1"></span></div>
+  <div class="body" id="linkBody"></div>
+</div>
+
+<!-- page dialogs, sign-in -->
+<div id="dlg" role="alertdialog">
+  <h2 id="dTitle"></h2>
+  <p class="dsub" id="dSub" hidden></p>
+  <div class="dmsg" id="dMsg"></div>
+  <div class="dfields" id="dFields" hidden>
+    <input id="dText" autocomplete="off" spellcheck="false">
+    <input id="dUser" autocomplete="username" placeholder="User name" autocapitalize="off">
+    <input id="dPass" type="password" autocomplete="current-password" placeholder="Password">
+  </div>
+  <div class="dact"><button class="btn" id="dCancel">Cancel</button><button class="btn primary" id="dOk">OK</button></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+
+window.driftUi.onmessage = e => { const m = JSON.parse(e.data); onMessage(m); };
+const post = m => window.driftUi.postMessage(JSON.stringify(m));
+const engines = { google: "Google", bing: "Bing", duckduckgo: "DuckDuckGo", brave: "Brave Search" };
+let nav = {}, tabs = [], activeId = 0, settings = { engine: "google" }, shield = { state: "none", count: 0 };
+let panel = null, snapshot = null, dlg = null, upd = {};
+
+const icon = (id, cls = "i") => `<svg class="${cls}"><use href="#${id}"/></svg>`;
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+function toast(text) { const t = $("#toast"); t.textContent = text; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 1800); }
+
+/* ---------- size: the native side places this page over the bar, or over everything ---------- */
+let lastBar = 0, isFull = false;
+function reportBar() {
+  const h = Math.round($("#bar").getBoundingClientRect().height - parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--bottom") || 0));
+  if (h !== lastBar && h > 0) { lastBar = h; document.documentElement.style.setProperty("--bar", h + "px"); post({ type: "bar", height: h }); }
+}
+new ResizeObserver(reportBar).observe($("#bar"));
+function syncFull() {
+  const want = !!panel || !!dlg || !!nav.error;
+  document.body.classList.toggle("full", want);
+  document.body.classList.toggle("panel", !!panel || !!dlg);
+  if (want !== isFull) { isFull = want; post({ type: "full", on: want }); }
+}
+
+/* ---------- panels ---------- */
+// Opening one asks for a picture of the page first, so it can sit blurred behind the panel.
+function open(kind) {
+  if (panel === kind) return;
+  closePanels(true);
+  panel = kind;
+  post({ type: "overlay", kind });
+}
+function onSnapshot(m) {
+  snapshot = m;
+  if (m.data) $("#snap").src = m.data;
+  $("#snap").hidden = !m.data;
+  if (m.kind !== panel) return;
+  syncFull();
+  requestAnimationFrame(() => show(m.kind));
+}
+function show(kind) {
+  if (kind === "search") openPalette();
+  else if (kind === "tabs") openGrid();
+  else if (kind === "dialog") openDialog();
+  else {
+    const el = $("#" + kind);
+    if (!el) return;
+    if (kind === "about") post({ type: "getInfo" });
+    if (kind === "shield") post({ type: "getShield" });
+    el.classList.add("open");
+  }
+}
+function closePanels(quick) {
+  document.querySelectorAll(".sheet.open, #pal.open, #grid.open").forEach(e => e.classList.remove("open"));
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  const was = panel;
+  panel = null;
+  if (!quick) setTimeout(() => { if (!panel && !dlg) syncFull(); }, 260);
+  return was;
+}
+$("#scrim").onclick = () => { if (dlg) replyDialog(false); else closePanels(); };
+
+/* ---------- the bar ---------- */
+$("#backBtn").onclick = () => post({ type: "back" });
+$("#addr").onclick = e => { if (e.target.closest("#shieldBtn")) { open("shield"); return; } open("search"); };
+$("#tabsBtn").onclick = () => open("tabs");
+$("#menuBtn").onclick = () => open("menu");
+
+function renderNav() {
+  $("#backBtn").disabled = !nav.canBack;
+  const t = $("#addrText");
+  const page = nav.url && !nav.error;
+  t.textContent = nav.url ? (nav.host || nav.url) : "Search or type address";
+  t.classList.toggle("ph", !nav.url);
+  $("#addrIcon").setAttribute("href", !nav.url ? "#i-search" : nav.secure ? "#i-lock" : "#i-globe");
+  $("#tabCount").textContent = Math.min(nav.tabCount || 1, 99);
+  const p = $("#progress");
+  if (nav.loading && nav.progress < 100) { p.classList.add("on"); p.style.width = Math.max(8, nav.progress) + "%"; }
+  else { p.style.width = "100%"; setTimeout(() => { if (!nav.loading) { p.classList.remove("on"); setTimeout(() => { if (!nav.loading) p.style.width = "0"; }, 300); } }, 150); }
+  // menu
+  $("#mFwd").disabled = !nav.canForward;
+  $("#mReloadIcon").setAttribute("href", nav.loading ? "#i-x" : "#i-reload");
+  $("#mReloadText").textContent = nav.loading ? "Stop" : "Reload";
+  $("#mStar").classList.toggle("on", !!nav.bookmarked);
+  $("#mStarText").textContent = nav.bookmarked ? "Saved" : "Bookmark";
+  $("#mStar").disabled = $("#mShare").disabled = !page;
+  $("#mDesktopT").classList.toggle("on", !!nav.desktop);
+  renderPrompt();
+  renderError();
+}
+
+function renderShield() {
+  const b = $("#shieldBtn");
+  b.hidden = shield.state === "none";
+  b.dataset.state = shield.state;
+  $("#shieldIcon").setAttribute("href", shield.state === "off" || shield.state === "allowed" ? "#i-shield-off" : "#i-shield");
+  const n = shield.state === "on" ? shield.count : 0;
+  $("#shieldCount").textContent = n ? (n > 99 ? "99+" : n) : "";
+  $("#mShieldEnd").textContent = shield.state === "on" ? `${n} blocked` : shield.state === "allowed" ? "Off for this site" : shield.state === "off" ? "Off" : "";
+}
+
+/* ---------- permission prompt ---------- */
+const permName = { notifications: "show notifications", camera: "use your camera", microphone: "use your microphone", location: "know your location", midi: "use your MIDI devices", clipboard: "see what you copy" };
+const permIcon = { camera: "#i-cam", microphone: "#i-mic", location: "#i-pin" };
+function renderPrompt() {
+  const p = nav.prompt, box = $("#prompt");
+  box.hidden = !p;
+  if (!p) return;
+  const kinds = p.kinds.map(k => permName[k] || k);
+  const what = kinds.length === 2 && p.kinds.includes("camera") && p.kinds.includes("microphone") ? "use your camera and microphone" : kinds.join(" and ");
+  $("#promptText").innerHTML = `<b>${esc(p.host)}</b> wants to ${esc(what)}`;
+  $("#promptIcon").setAttribute("href", permIcon[p.kinds[0]] || "#i-globe");
+  box.dataset.origin = p.origin;
+}
+const answer = d => post({ type: "permission", origin: $("#prompt").dataset.origin, decision: d });
+$("#pAllow").onclick = () => answer("allow");
+$("#pBlock").onclick = () => answer("block");
+$("#pDismiss").onclick = () => answer("dismiss");
+
+/* ---------- error card ---------- */
+const errorCopy = {
+  dns: h => ({ title: `Can't find ${h}`, text: "Drift couldn't find a server for this address. It may be misspelled, or the site may not exist anymore.", tips: ["Check the spelling of the address.", `Search for “${h}” instead.`, "If no sites load, check your internet connection."] }),
+  offline: () => ({ title: "You're offline", text: "Drift can't reach the internet right now, so this page couldn't load.", tips: ["Check your Wi-Fi or mobile data.", "Turn off airplane mode."] }),
+  connect: h => ({ title: `${h} isn't responding`, text: "The site's server refused or dropped the connection. It may be down for a moment.", tips: ["Try again in a minute.", "Make sure the address is right.", "A VPN or proxy might be blocking this site."] }),
+  timeout: h => ({ title: `${h} took too long to respond`, text: "The server didn't answer in time. It may be busy or having problems.", tips: ["Try again.", "Check that your connection isn't slow."] }),
+  cert: h => ({ title: "This connection isn't private", text: `The security certificate for ${h} isn't valid, so Drift stopped before sending anything. Someone could be trying to read or change your data.`, tips: ["Make sure your phone's date and time are correct.", "Don't enter passwords or payment details on this site."] }),
+  redirect: h => ({ title: `${h} redirected too many times`, text: "The site keeps sending Drift from one address to another without ever showing a page.", tips: ["Try again.", "Clearing this site's cookies often fixes it."] }),
+  response: h => ({ title: `${h} sent an invalid response`, text: "The server answered, but Drift couldn't understand the reply.", tips: ["Try again.", "The site may be having problems. Check back later."] }),
+  localnet: h => ({ title: `Let Drift reach ${h}?`, text: "This page is on your own network, like a router or a device at home. Android asks before an app can reach those.", tips: ["Tap Allow below, then allow it when Android asks."], action: "Allow local network" }),
+  unknown: () => ({ title: "This page didn't load", text: "Something went wrong while loading this page.", tips: ["Try again.", "If it keeps happening, check your connection."] }),
+};
+function renderError() {
+  const e = nav.error;
+  $("#err").hidden = !e;
+  if (e) {
+    $("#snap").hidden = true;
+    const c = (errorCopy[e.kind] || errorCopy.unknown)(e.host);
+    $("#errIcon").setAttribute("href", "#e-" + (e.kind === "localnet" ? "connect" : errorCopy[e.kind] && e.kind !== "response" ? e.kind : "unknown"));
+    $("#errTitle").textContent = c.title;
+    $("#errText").textContent = c.text;
+    $("#errTips").innerHTML = c.tips.map(t => `<li>${esc(t)}</li>`).join("");
+    $("#errSearch").hidden = e.kind !== "dns";
+    $("#errSearch").textContent = `Search for “${e.host}”`;
+    $("#errRetry").textContent = c.action || "Try again";
+    $("#errCode").textContent = e.code || "";
+  }
+  syncFull();
+}
+$("#errRetry").onclick = () => post({ type: nav.error && nav.error.kind === "localnet" ? "allowLocalNetwork" : "reload" });
+$("#errSearch").onclick = () => nav.error && post({ type: "go", input: nav.error.host, search: true });
+
+/* ---------- search ---------- */
+let pal = { items: [], sel: 0 };
+function openPalette() {
+  const q = $("#q");
+  q.value = snapshot && snapshot.current || "";
+  $("#pal").classList.add("open");
+  renderPalette();
+  setTimeout(() => { q.focus(); q.select(); }, 60);
+}
+function score(text, words) {
+  text = (text || "").toLowerCase();
+  let s = 0;
+  for (const w of words) { const i = text.indexOf(w); if (i < 0) return 0; s += i === 0 ? 3 : text[i - 1] === "." || text[i - 1] === "/" || text[i - 1] === " " ? 2 : 1; }
+  return s;
+}
+function renderPalette() {
+  const raw = $("#q").value.trim(), words = raw.toLowerCase().split(/\s+/).filter(Boolean);
+  const items = [];
+  const seen = new Set();
+  const engine = engines[settings.engine] || "Google";
+  if (raw && raw !== (snapshot && snapshot.current)) {
+    const looksUrl = !raw.includes(" ") && /^[\w-]+(\.[\w-]+)+(:\d+)?(\/.*)?$|^https?:\/\/|^localhost/.test(raw);
+    if (looksUrl) items.push({ kind: "go", title: raw, sub: "Go to this address", icon: "i-globe", input: raw });
+    items.push({ kind: "search", title: raw, sub: `Search ${engine}`, icon: "i-search", input: raw });
+  }
+  if (words.length && raw !== (snapshot && snapshot.current)) {
+    for (const t of (snapshot && snapshot.tabs) || []) {
+      if (t.id === activeId || !t.url) continue;
+      const s = score(t.title + " " + t.url, words);
+      if (s) items.push({ kind: "tab", id: t.id, title: t.title || t.url, sub: t.url, favicon: t.favicon, tag: "Switch to tab", rank: 100 + s });
+    }
+    const add = (list, rank, tag) => {
+      for (const h of list || []) {
+        if (seen.has(h.url)) continue;
+        const s = score((h.title || "") + " " + h.url.replace(/^https?:\/\/(www\.)?/, ""), words);
+        if (s) { seen.add(h.url); items.push({ kind: "url", url: h.url, title: h.title || h.url, sub: h.url.replace(/^https?:\/\//, ""), favicon: h.favicon, tag, rank: rank + s + (h.score || 0) }); }
+      }
+    };
+    add(snapshot && snapshot.bookmarks, 50, "Bookmark");
+    add(snapshot && snapshot.history, 0, "");
+  } else if (!raw) {
+    for (const h of ((snapshot && snapshot.history) || []).slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 6))
+      items.push({ kind: "url", url: h.url, title: h.title || h.url, sub: h.url.replace(/^https?:\/\//, ""), favicon: h.favicon, tag: "", rank: 0 });
+  }
+  const head = items.filter(x => x.rank === undefined), rest = items.filter(x => x.rank !== undefined).sort((a, b) => b.rank - a.rank).slice(0, 8);
+  pal.items = [...head, ...rest];
+  pal.sel = 0;
+  const box = $("#palList");
+  box.innerHTML = "";
+  pal.items.forEach((it, n) => {
+    const b = document.createElement("button");
+    b.className = "row" + (n === 0 && raw ? " sel" : "");
+    b.innerHTML = `<span class="fav">${it.favicon ? `<img src="${esc(it.favicon)}" alt="">` : icon(it.icon || "i-globe")}</span><span class="t"><b>${esc(it.title)}</b><span>${esc(it.sub)}</span></span>${it.tag ? `<span class="tag">${esc(it.tag)}</span>` : ""}`;
+    const img = b.querySelector("img"); if (img) img.onerror = () => { img.parentElement.innerHTML = icon("i-globe"); };
+    b.onclick = () => choose(it);
+    box.appendChild(b);
+  });
+}
+function choose(it) {
+  closePanels();
+  if (!it) return;
+  if (it.kind === "tab") post({ type: "activate", id: it.id });
+  else if (it.kind === "search") post({ type: "go", input: it.input, search: true });
+  else if (it.kind === "go") post({ type: "go", input: it.input });
+  else post({ type: "openUrl", url: it.url });
+}
+$("#q").addEventListener("input", renderPalette);
+$("#q").addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  const raw = $("#q").value.trim();
+  if (!raw) return;
+  choose(pal.items[0] && (pal.items[0].kind === "go" || pal.items[0].kind === "search") ? pal.items[0] : { kind: "go", input: raw });
+});
+$("#qClear").onclick = () => { $("#q").value = ""; renderPalette(); $("#q").focus(); };
+$("#pal").addEventListener("click", e => { if (e.target.id === "pal" || e.target.id === "palList") closePanels(); });
+
+/* ---------- tab grid ---------- */
+function openGrid() {
+  renderGrid();
+  $("#grid").classList.add("open");
+  requestAnimationFrame(() => { const on = $(".gc.on"); if (on) on.scrollIntoView({ block: "center" }); });
+}
+function renderGrid() {
+  const list = (snapshot && snapshot.tabs) || tabs;
+  $("#gridTitle").textContent = list.length === 1 ? "1 tab" : `${list.length} tabs`;
+  const box = $("#gridList");
+  box.innerHTML = "";
+  list.forEach((t, n) => {
+    const c = document.createElement("div");
+    c.className = "gc" + (t.id === activeId ? " on" : "");
+    c.style.transitionDelay = Math.min(n, 12) * 18 + "ms";
+    c.innerHTML = `<div class="gt">${t.favicon ? `<img src="${esc(t.favicon)}" alt="">` : `<svg class="gl i"><use href="#i-globe"/></svg>`}<span>${esc(t.title || t.host || "New Tab")}</span><button class="gx" aria-label="Close tab">${icon("i-x")}</button></div>
+      <div class="shot">${t.thumb ? "" : icon(t.url ? "i-globe" : "i-search")}</div>`;
+    if (t.thumb) c.querySelector(".shot").style.backgroundImage = `url("${t.thumb}")`;
+    c.onclick = e => {
+      if (e.target.closest(".gx")) {
+        c.classList.add("closing");
+        setTimeout(() => {
+          post({ type: "close", id: t.id });
+          if (snapshot) snapshot.tabs = snapshot.tabs.filter(x => x.id !== t.id);
+          if (!snapshot || !snapshot.tabs.length) closePanels(); else renderGrid();
+        }, 180);
+        return;
+      }
+      post({ type: "activate", id: t.id });
+      closePanels();
+    };
+    box.appendChild(c);
+  });
+}
+$("#gridNew").onclick = () => { closePanels(); post({ type: "newTab" }); setTimeout(() => open("search"), 320); };
+$("#gridDone").onclick = () => closePanels();
+$("#closeAll").onclick = () => { post({ type: "closeAll" }); closePanels(); };
+
+/* ---------- menu ---------- */
+$("#mFwd").onclick = () => { closePanels(); post({ type: "forward" }); };
+$("#mReload").onclick = () => { closePanels(); post({ type: nav.loading ? "stop" : "reload" }); };
+$("#mStar").onclick = () => post({ type: "toggleBookmark" });
+$("#mShare").onclick = () => { closePanels(); post({ type: "share" }); };
+$("#mNew").onclick = () => { closePanels(); post({ type: "newTab" }); setTimeout(() => open("search"), 320); };
+$("#mBookmarks").onclick = () => openList("bookmarks");
+$("#mHistory").onclick = () => openList("history");
+$("#mDownloads").onclick = () => openList("downloads");
+$("#mShield").onclick = () => switchTo("shield");
+$("#mDesktop").onclick = () => { post({ type: "desktopSite" }); closePanels(); };
+$("#mSettings").onclick = () => switchTo("settings");
+$("#mAbout").onclick = () => switchTo("about");
+function switchTo(kind) {
+  document.querySelectorAll(".sheet.open").forEach(e => e.classList.remove("open"));
+  panel = kind;
+  setTimeout(() => show(kind), 120);
+}
+
+/* ---------- lists ---------- */
+let listKind = "", listItems = [];
+function openList(kind) {
+  listKind = kind;
+  listItems = [];
+  $("#listTitle").textContent = { bookmarks: "Bookmarks", history: "History", downloads: "Downloads" }[kind];
+  $("#listQ").value = "";
+  $("#listSearch").hidden = kind === "downloads";
+  $("#listClear").hidden = kind === "bookmarks";
+  $("#listBody").innerHTML = "";
+  post({ type: kind === "bookmarks" ? "getBookmarks" : kind === "history" ? "getHistory" : "getDownloads" });
+  switchTo("list");
+}
+const day = t => { const d = new Date(t), now = new Date(); const diff = Math.floor((new Date(now.toDateString()) - new Date(d.toDateString())) / 864e5); return diff === 0 ? "Today" : diff === 1 ? "Yesterday" : d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }); };
+const size = b => b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : b >= 1e6 ? (b / 1e6).toFixed(1) + " MB" : b >= 1e3 ? Math.round(b / 1e3) + " KB" : b + " B";
+function renderList() {
+  const box = $("#listBody"), q = $("#listQ").value.trim().toLowerCase();
+  box.innerHTML = "";
+  let items = listItems;
+  if (q) items = items.filter(x => ((x.title || "") + " " + (x.url || "") + " " + (x.name || "")).toLowerCase().includes(q));
+  if (!items.length) {
+    box.innerHTML = `<div class="empty">${q ? "Nothing matches." : listKind === "bookmarks" ? "Tap the star in the menu to save a page here." : listKind === "history" ? "Pages you visit show up here." : "Files you download show up here."}</div>`;
+    return;
+  }
+  let lastDay = "";
+  for (const it of items.slice(0, 400)) {
+    if (listKind === "history") { const d = day(it.last); if (d !== lastDay) { lastDay = d; const l = document.createElement("div"); l.className = "label"; l.textContent = d; box.appendChild(l); } }
+    const r = document.createElement("div");
+    r.className = "row" + (listKind === "downloads" ? " dl" : "");
+    if (listKind === "downloads") {
+      const pct = it.total ? Math.round(it.received * 100 / it.total) : 0;
+      const sub = it.state === "done" ? `${size(it.total || it.received)} · ${esc(it.host)}` : it.state === "failed" ? "Failed" : it.state === "gone" ? "Removed" : it.state === "paused" ? "Waiting…" : it.total ? `${size(it.received)} of ${size(it.total)}` : `${size(it.received)}…`;
+      r.innerHTML = `<span class="fav">${icon("i-file")}</span><span class="t"><b>${esc(it.name)}</b><span>${sub}</span>${it.state === "progress" || it.state === "paused" ? `<span class="meter"><i style="width:${pct}%"></i></span>` : ""}</span><button class="x" aria-label="${it.state === "progress" ? "Cancel" : "Remove"}">${icon("i-x")}</button>`;
+      r.onclick = e => post({ type: "download", action: e.target.closest(".x") ? (it.state === "progress" || it.state === "paused" ? "cancel" : "remove") : it.state === "done" ? "open" : it.state === "failed" ? "retry" : "folder", id: it.id });
+    } else {
+      r.innerHTML = `<span class="fav">${it.favicon ? `<img src="${esc(it.favicon)}" alt="">` : icon("i-globe")}</span><span class="t"><b>${esc(it.title || it.url)}</b><span>${esc(it.url.replace(/^https?:\/\/(www\.)?/, ""))}</span></span><button class="x" aria-label="Delete">${icon("i-x")}</button>`;
+      const img = r.querySelector("img"); if (img) img.onerror = () => { img.parentElement.innerHTML = icon("i-globe"); };
+      r.onclick = e => {
+        if (e.target.closest(".x")) {
+          post({ type: listKind === "bookmarks" ? "bookmarkDelete" : "historyDelete", url: it.url });
+          listItems = listItems.filter(x => x !== it); renderList(); return;
+        }
+        closePanels(); post({ type: "openUrl", url: it.url });
+      };
+    }
+    box.appendChild(r);
+  }
+}
+$("#listQ").addEventListener("input", renderList);
+$("#listClear").onclick = () => {
+  if (listKind === "history") { post({ type: "historyClear" }); listItems = []; renderList(); toast("History cleared"); }
+  else if (listKind === "downloads") { post({ type: "download", action: "clear" }); }
+};
+
+/* ---------- ad blocker ---------- */
+function renderShieldDetails(m) {
+  const plural = n => `${n.toLocaleString()} ${n === 1 ? "ad or tracker" : "ads and trackers"}`;
+  $("#shTitle").textContent = m.state === "none" ? "Ad blocker" : m.state === "off" ? "Ad blocker is off" : m.state === "allowed" ? `Off on ${m.site}` : `${plural(m.count)} blocked`;
+  $("#shSub").textContent = m.state === "on" ? `on ${m.site}` : m.state === "off" ? "Turn it on in Settings" : m.state === "allowed" ? "Ads can show on this site" : "Open a website to see what's blocked";
+  $("#shSite").hidden = m.state === "none" || m.state === "off";
+  $("#shSiteText").textContent = `Block ads on ${m.site}`;
+  $("#shSiteT").classList.toggle("on", m.state === "on");
+  const max = Math.max(1, ...m.sites.map(s => s.count));
+  $("#shBars").innerHTML = m.sites.map(s => `<div class="bar"><i style="width:${Math.max(12, s.count * 100 / max)}%"></i><span>${esc(s.site)}</span><span>${s.count}</span></div>`).join("");
+  $("#shFoot").textContent = `${m.total.toLocaleString()} blocked in total · ${m.rules.toLocaleString()} rules from ${m.lists} lists`;
+}
+$("#shSite").onclick = () => { const on = $("#shSiteT").classList.contains("on"); post({ type: "shieldAllow", allow: on }); closePanels(); };
+
+/* ---------- settings ---------- */
+function renderSettings() {
+  $("#engines").innerHTML = Object.entries(engines).map(([k, v]) => `<button class="row" data-engine="${k}"><span class="radio${settings.engine === k ? " on" : ""}"></span><span class="t"><b>${v}</b></span></button>`).join("");
+  document.querySelectorAll("[data-engine]").forEach(b => b.onclick = () => post({ type: "setting", key: "engine", value: b.dataset.engine }));
+  $("#themeBox").hidden = !settings.themeChoice;
+  $("#themes").innerHTML = [["system", "Same as phone"], ["light", "Light"], ["dark", "Dark"]].map(([k, v]) => `<button class="row" data-theme="${k}"><span class="radio${settings.theme === k ? " on" : ""}"></span><span class="t"><b>${v}</b></span></button>`).join("");
+  document.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => post({ type: "setting", key: "theme", value: b.dataset.theme }));
+  $("#sAdblockT").classList.toggle("on", settings.adblock === "on");
+}
+$("#sAdblock").onclick = () => post({ type: "setting", key: "adblock", value: settings.adblock === "on" ? "off" : "on" });
+$("#sLists").onclick = () => { post({ type: "filtersUpdate" }); toast("Updating filter lists…"); };
+$("#sPerms").onclick = () => { listKind = "perms"; post({ type: "getPermissions" }); $("#listTitle").textContent = "Site permissions"; $("#listSearch").hidden = true; $("#listClear").hidden = true; $("#listBody").innerHTML = ""; switchTo("list"); };
+$("#sClearHist").onclick = () => { post({ type: "historyClear" }); toast("History cleared"); };
+$("#sClearAll").onclick = () => { post({ type: "historyClear", cookies: true }); toast("History, cookies and site data cleared"); };
+function renderPerms(m) {
+  const box = $("#listBody");
+  if (!m.sites.length) { box.innerHTML = `<div class="empty">When you allow or block something for a site, it shows up here.</div>`; return; }
+  const name = { notifications: "Notifications", camera: "Camera", microphone: "Microphone", location: "Location", midi: "MIDI devices" };
+  box.innerHTML = "";
+  for (const s of m.sites) {
+    const l = document.createElement("div"); l.className = "label"; l.textContent = s.host; box.appendChild(l);
+    for (const it of s.items) {
+      const r = document.createElement("div"); r.className = "row";
+      r.innerHTML = `<span class="t"><b>${esc(name[it.kind] || it.kind)}</b><span>${it.state === "allow" ? "Allowed" : "Blocked"}</span></span><button class="btn">Reset</button>`;
+      r.querySelector(".btn").onclick = () => post({ type: "permSet", origin: s.origin, kind: it.kind, state: "default" });
+      box.appendChild(r);
+    }
+  }
+}
+
+/* ---------- about ---------- */
+function renderInfo(m) {
+  $("#aVer").textContent = `Version ${m.version} · Chromium ${m.chromium}`;
+  $("#aTabs").textContent = m.tabs;
+  $("#aBlocked").textContent = m.total.toLocaleString();
+  $("#aHistory").textContent = m.history.toLocaleString();
+  const kv = [["Web engine", `Android System WebView ${m.engine}`], ["System", m.system], ["Ad blocker", `${m.rules.toLocaleString()} rules`], ["User agent", m.userAgent]];
+  $("#aKv").innerHTML = kv.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
+}
+function renderUpdate() {
+  const u = upd;
+  let title = "Drift is up to date", sub = `Version ${u.current || ""}`, label = "Check for updates", busy = false, primary = false;
+  if (u.state === "checking") { title = "Checking for updates…"; busy = true; }
+  else if (u.state === "downloading") { title = `Downloading Drift ${u.latest}…`; sub = `${u.percent || 0}%`; busy = true; }
+  else if (u.state === "ready") { title = `Drift ${u.latest} is ready`; sub = "Install it now. Your tabs come back."; label = "Install"; primary = true; }
+  else if (u.state === "error") { title = "Couldn't check for updates"; sub = u.error || ""; label = "Try again"; }
+  else if (u.state === "idle") { title = `Drift ${u.current || ""}`; sub = "Updates are checked automatically."; }
+  $("#uTitle").textContent = title; $("#uSub").textContent = sub;
+  const b = $("#uBtn"); b.textContent = label; b.disabled = busy; b.classList.toggle("primary", primary);
+  $("#mAboutEnd").textContent = u.state === "ready" ? "Update ready" : "";
+}
+$("#uBtn").onclick = () => post({ type: upd.state === "ready" ? "applyUpdate" : "checkUpdate" });
+$("#aSource").onclick = () => { closePanels(); post({ type: "openUrl", url: "https://github.com/lompendans/drift", newTab: true }); };
+
+/* ---------- long press ---------- */
+function openLink(m) {
+  const box = $("#linkBody"), rows = [];
+  $("#linkUrl").textContent = m.link || m.image;
+  if (m.link) rows.push(["i-tab", "Open in new tab", () => post({ type: "openUrl", url: m.link, newTab: true })],
+                       ["i-layers", "Open in background", () => post({ type: "openBackground", url: m.link })],
+                       ["i-copy", "Copy link", () => { post({ type: "copy", text: m.link }); toast("Link copied"); }],
+                       ["i-share", "Share link", () => post({ type: "shareUrl", url: m.link })],
+                       ["i-download", "Download link", () => post({ type: "downloadUrl", url: m.link })]);
+  if (m.image && /^https?:/.test(m.image)) rows.push(["i-image", "Open image in new tab", () => post({ type: "openUrl", url: m.image, newTab: true })],
+                       ["i-download", "Download image", () => post({ type: "downloadUrl", url: m.image })],
+                       ["i-copy", "Copy image address", () => { post({ type: "copy", text: m.image }); toast("Address copied"); }]);
+  box.innerHTML = "";
+  for (const [ic, text, fn] of rows) {
+    const b = document.createElement("button"); b.className = "row";
+    b.innerHTML = `${icon(ic)}<span class="t"><b>${esc(text)}</b></span>`;
+    b.onclick = () => { closePanels(); fn(); };
+    box.appendChild(b);
+  }
+  open("link");
+}
+
+/* ---------- dialogs ---------- */
+function onDialog(m) {
+  dlg = m;
+  if (panel) closePanels(true);
+  panel = "dialog";
+  post({ type: "overlay", kind: "dialog" });
+}
+function openDialog() {
+  const m = dlg;
+  if (!m) return;
+  const host = m.host || "This page";
+  let title = `${host} says`, sub = "", msg = m.message || "", ok = "OK", cancel = "Cancel";
+  if (m.kind === "leave") { title = "Leave site?"; msg = "Changes you made may not be saved."; ok = "Leave"; cancel = "Stay"; }
+  else if (m.kind === "auth") { title = `Sign in to ${host}`; sub = m.message ? `“${m.message}” asks for your user name and password.` : "This site asks for your user name and password."; msg = ""; ok = "Sign in"; }
+  $("#dTitle").textContent = title;
+  $("#dSub").textContent = sub; $("#dSub").hidden = !sub;
+  $("#dMsg").textContent = msg; $("#dMsg").hidden = !msg;
+  $("#dText").hidden = m.kind !== "prompt"; $("#dText").value = m.kind === "prompt" ? m.text || "" : "";
+  $("#dUser").hidden = $("#dPass").hidden = m.kind !== "auth"; $("#dUser").value = $("#dPass").value = "";
+  $("#dFields").hidden = m.kind !== "prompt" && m.kind !== "auth";
+  $("#dCancel").hidden = m.kind === "alert";
+  $("#dOk").textContent = ok; $("#dCancel").textContent = cancel;
+  $("#dlg").classList.add("open");
+  setTimeout(() => { if (m.kind === "prompt") { $("#dText").focus(); $("#dText").select(); } else if (m.kind === "auth") $("#dUser").focus(); }, 80);
+}
+function replyDialog(ok) {
+  if (!dlg) return;
+  const d = dlg; dlg = null;
+  post({ type: "dialogReply", id: d.id, ok, text: d.kind === "auth" ? $("#dUser").value : $("#dText").value, password: $("#dPass").value });
+  $("#dPass").value = "";
+  $("#dlg").classList.remove("open");
+  closePanels();
+}
+$("#dOk").onclick = () => replyDialog(true);
+$("#dCancel").onclick = () => replyDialog(false);
+$("#dlg").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); replyDialog(true); } });
+
+/* ---------- messages from Drift ---------- */
+function onMessage(m) {
+  switch (m.type) {
+    case "insets": {
+      const r = document.documentElement.style;
+      r.setProperty("--top", m.top + "px"); r.setProperty("--bottom", m.bottom + "px"); r.setProperty("--ime", m.ime + "px");
+      $("#dlg").classList.toggle("kb", m.ime > 0);
+      lastBar = 0; reportBar();
+      break;
+    }
+    case "tabs": tabs = m.tabs; activeId = m.active; if (snapshot) snapshot.tabs = m.tabs; if (panel === "tabs") renderGrid(); break;
+    case "tab": { const i = tabs.findIndex(t => t.id === m.tab.id); if (i >= 0) tabs[i] = m.tab; break; }
+    case "nav": nav = m; renderNav(); break;
+    case "settings": settings = m; renderSettings(); break;
+    case "shield": shield = m; renderShield(); break;
+    case "shieldDetails": renderShieldDetails(m); break;
+    case "snapshot": onSnapshot(m); break;
+    case "palette": open("search"); break;
+    case "back":
+      if (dlg) replyDialog(false);
+      else if (panel === "list" || panel === "shield" || panel === "settings" || panel === "about") closePanels();
+      else closePanels();
+      break;
+    case "bookmarkList": if (listKind === "bookmarks") { listItems = m.items.slice().reverse(); renderList(); } break;
+    case "historyList": if (listKind === "history") { listItems = m.items; renderList(); } break;
+    case "downloads": if (listKind === "downloads") { listItems = m.items; renderList(); } break;
+    case "permissions": if (listKind === "perms") renderPerms(m); break;
+    case "bookmarked": toast(m.on ? "Bookmarked" : "Bookmark removed"); break;
+    case "downloadStarted": toast(`Downloading ${m.name}`); break;
+    case "info": renderInfo(m); break;
+    case "update": upd = m; renderUpdate(); break;
+    case "dialog": onDialog(m); break;
+    case "dialogGone": if (dlg && dlg.id === m.id) { dlg = null; $("#dlg").classList.remove("open"); closePanels(); } break;
+    case "linkMenu": openLink(m); break;
+  }
+}
+
+reportBar();
+post({ type: "ready" });
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Drift's two waves (the same curves as the desktop logo), inside the icon's safe zone -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M25.2,73.8 C43.2,52.2 61.2,84.6 82.8,59.4" android:strokeColor="#96FFFFFF"
+        android:strokeWidth="7.2" android:strokeLineCap="round" />
+    <path android:pathData="M21.6,55.8 C39.6,27 57.6,70.2 86.4,34.2" android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="10.8" android:strokeLineCap="round" />
+</vector>

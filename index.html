@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Drift Browser</title>
-<meta name="description" content="Drift is a calm, fast, open-source browser for Windows and Linux: vertical tabs, a built-in ad blocker, and nothing in the way.">
+<meta name="description" content="Drift is a calm, fast, open-source browser for Windows, Linux and Android: vertical tabs, a built-in ad blocker, and nothing in the way.">
 <meta name="theme-color" content="#16171a" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#edeff2" media="(prefers-color-scheme: light)">
 <link rel="icon" href="icon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="icon-180.png">
-<meta property="og:title" content="Drift: a calm, fast browser for Windows and Linux">
+<meta property="og:title" content="Drift: a calm, fast browser for Windows, Linux and Android">
 <meta property="og:description" content="Vertical tabs, a built-in ad blocker, and nothing in the way. Free and open source.">
 <meta property="og:image" content="https://lompendans.github.io/drift/icon-512.png">
 <style>
@@ -188,10 +188,10 @@ footer a { color: var(--muted); }
 <header class="hero">
   <div class="glow"></div>
   <div class="wrap">
-    <a class="new" href="#install"><b>New</b>Drift 2.0: now on Linux, and open source</a><br>
+    <a class="new" href="#install"><b>New</b>Drift is on Android now, too</a><br>
     <img class="logo" src="icon-180.png" alt="Drift logo">
     <h1>Browse calmly.</h1>
-    <p class="lede">Drift is a fast, quiet browser for Windows and Linux. Your tabs sit down the side, ads are gone before they load, and nothing pops up that you didn't ask for.</p>
+    <p class="lede">Drift is a fast, quiet browser for Windows, Linux and Android. Your tabs sit down the side, ads are gone before they load, and nothing pops up that you didn't ask for.</p>
     <div class="cta">
       <a class="btn primary" id="dl" href="https://github.com/lompendans/drift/releases/latest/download/DriftSetup.exe">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg>
@@ -199,7 +199,7 @@ footer a { color: var(--muted); }
       </a>
       <a class="btn quiet" id="dlOther" href="#install" data-os="linux">Get it for Linux</a>
     </div>
-    <p class="meta"><b id="ver">Latest version</b> · Windows 10 and 11 · Linux · free and open source</p>
+    <p class="meta"><b id="ver">Latest version</b> · Windows · Linux · Android · free and open source</p>
 
     <div class="shot" aria-label="A picture of Drift's window">
       <div class="s-side">
@@ -267,7 +267,7 @@ footer a { color: var(--muted); }
     <div class="kicker">Install</div>
     <h2>Up and running in a minute.</h2>
     <p class="sub">No administrator rights needed on Windows. Drift installs just for you, and updates itself from then on.</p>
-    <div class="os-tabs" role="tablist"><button type="button" data-os="windows" class="on">Windows</button><button type="button" data-os="linux">Linux</button></div>
+    <div class="os-tabs" role="tablist"><button type="button" data-os="windows" class="on">Windows</button><button type="button" data-os="linux">Linux</button><button type="button" data-os="android">Android</button></div>
     <div class="split">
       <div>
         <div class="os-pane" data-os="windows">
@@ -277,6 +277,15 @@ footer a { color: var(--muted); }
             <div class="step"><b>Click Install</b><span>Drift goes in your Start menu (and on your desktop if you like). Uninstall any time from Settings → Apps.</span></div>
           </div>
           <div class="alts"><a href="https://github.com/lompendans/drift/releases/latest/download/DriftSetup.exe">DriftSetup.exe</a><a href="https://github.com/lompendans/drift/releases/latest/download/Drift-portable.zip">Portable .zip (no install)</a></div>
+        </div>
+        <div class="os-pane" data-os="android" hidden>
+          <div class="steps">
+            <div class="step"><b>Download <code>Drift-android.apk</code> on your phone</b><span>It's under 1 MB: Drift uses the Chromium engine that's already on your phone.</span></div>
+            <div class="step"><b>Open it and tap Install</b><span>The first time, Android asks whether your browser may install apps. Allow it, then go back and tap Install.</span></div>
+            <div class="step"><b>Make it your default browser (optional)</b><span>Settings → Apps → Default apps → Browser app → Drift.</span></div>
+          </div>
+          <div class="alts"><a href="https://github.com/lompendans/drift/releases/latest/download/Drift-android.apk">Drift-android.apk</a></div>
+          <p class="note">Android 8 or newer. Drift for Android updates itself; when a new version is out, About Drift shows Install.</p>
         </div>
         <div class="os-pane" data-os="linux" hidden>
           <p style="margin:0 0 12px">Paste this into a terminal. On Ubuntu, Debian and Mint it installs the .deb (it asks for your password once); everywhere else it puts a self-updating AppImage in your home folder, with a menu entry.</p>
@@ -292,11 +301,12 @@ footer a { color: var(--muted); }
           <tr><td>Windows 11, Windows 10 (64-bit)</td><td class="y">Yes</td></tr>
           <tr><td>Ubuntu 22.04+, Debian 12+, Mint 21+</td><td class="y">Yes (.deb)</td></tr>
           <tr><td>Fedora, Arch, openSUSE and other 64-bit Linux</td><td class="y">Yes (AppImage)</td></tr>
+          <tr><td>Android 8 and newer</td><td class="y">Yes (.apk)</td></tr>
           <tr><td>Windows on ARM</td><td class="y">Yes, through Windows' x64 emulation</td></tr>
-          <tr><td>macOS</td><td class="n">Not yet</td></tr>
+          <tr><td>macOS, iPhone</td><td class="n">Not yet</td></tr>
           <tr><td>Windows 7, 8 and 8.1, 32-bit Windows</td><td class="n">No</td></tr>
         </table>
-        <p class="note">Drift 2 brings its own Chromium engine, so there's nothing else to install. Drift 1.x updates itself to 2.0.</p>
+        <p class="note">On Windows and Linux, Drift brings its own Chromium engine, so there's nothing else to install. Drift 1.x updates itself to 2.0.</p>
       </div>
     </div>
   </section>
@@ -307,6 +317,7 @@ footer a { color: var(--muted); }
     <details><summary>Is Drift free?</summary><p>Yes. No ads, no paid tier, no account.</p></details>
     <details><summary>Will websites work?</summary><p>Yes. Drift is built on Chromium, the engine Chrome and Edge are built on, so modern sites, video and web apps work normally. If the ad blocker breaks a site, click the shield and turn it off for that site.</p></details>
     <details><summary>How do updates work?</summary><p>Drift checks this project's GitHub releases when it starts and every few hours. A new version downloads in the background, is checked against the SHA-256 checksum GitHub publishes, and installs when you close Drift, or right away if you click "Update" in the toolbar. On Linux the AppImage updates itself the same way; if you installed the .deb, Drift tells you when a new version is out and you run the install command again.</p></details>
+    <details><summary>What's different on Android?</summary><p>It's the same Drift, made for one hand: the address bar sits at the bottom, tabs open in a grid, and the menu slides up. The ad blocker uses the same filter lists as on your computer. Android's built-in web engine doesn't run extensions or show website notifications, so those aren't there.</p></details>
     <details><summary>Why is Drift 2 bigger than Drift 1?</summary><p>Drift 1 borrowed Windows' built-in Edge WebView2 engine, which kept it tiny but tied it to Windows. Drift 2 carries its own copy of Chromium. That's what lets it run on Linux, and Drift now controls its own engine version.</p></details>
     <details><summary>Can I use Drift without installing it?</summary><p>Yes. Download the portable .zip, unzip it anywhere and open <code>Drift.exe</code>. It updates itself in place, too.</p></details>
     <details><summary>Do Chrome extensions work?</summary><p>Many do. Open an extension on the Chrome Web Store or Edge Add-ons in Drift and click "Add to Drift" in the bar above the page. Drift shows what the extension can do before adding it. Simple extensions, like dark modes and page tweaks, work best; ones that need newer Chrome-only features, like capturing a tab's sound, may not.</p></details>
@@ -353,6 +364,7 @@ function tick() {
 if (!reduce) { setTimeout(() => { document.getElementById("ad1").classList.add("gone"); document.getElementById("sCount").textContent = blocked = 12; document.getElementById("sPerm").classList.add("open"); }, 900); setInterval(tick, 3200); }
 
 // Windows / Linux: the install tabs, and the big button follows the visitor's system
+const isAndroid = /Android/.test(navigator.userAgent);
 const isLinux = /Linux|X11/.test(navigator.userAgent) && !/Android|CrOS/.test(navigator.userAgent);
 function showOs(os) {
   document.querySelectorAll(".os-tabs button").forEach(b => b.classList.toggle("on", b.dataset.os === os));
@@ -361,7 +373,12 @@ function showOs(os) {
 document.querySelectorAll(".os-tabs button").forEach(b => b.onclick = () => showOs(b.dataset.os));
 const other = document.getElementById("dlOther");
 other.onclick = () => showOs(other.dataset.os);
-if (isLinux) {
+if (isAndroid) {
+  document.getElementById("dl").href = "https://github.com/lompendans/drift/releases/latest/download/Drift-android.apk";
+  document.getElementById("dlText").textContent = "Download for Android";
+  other.textContent = "Install steps"; other.dataset.os = "android";
+  showOs("android");
+} else if (isLinux) {
   const dl = document.getElementById("dl");
   dl.href = "#install";
   dl.onclick = () => showOs("linux");

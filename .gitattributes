@@ -1,2 +1,3 @@
 # shell scripts must keep Unix line endings to run on Linux
 *.sh text eol=lf
+gradlew text eol=lf

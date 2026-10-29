@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New Tab</title>
+<style>
+/* One centered column: clock, date, search pill, then a grid of most-visited sites. */
+:root {
+  --page: #ffffff;
+  --fg: #17191d;
+  --muted: #646a74;
+  --faint: #9aa0a9;
+  --tile: #f3f4f6;
+  --tile-hover: #e9ebee;
+  --line: rgba(15, 23, 42, 0.1);
+  --accent: #0d9a87;
+  --glow: rgba(13, 154, 135, 0.10);
+  --glow2: rgba(28, 104, 214, 0.08);
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 28px rgba(15, 23, 42, 0.08);
+  --ui: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #202124; --fg: #ececef; --muted: #a2a6ad; --faint: #6e737b;
+    --tile: #2a2b2f; --tile-hover: #323338; --line: rgba(255, 255, 255, 0.1);
+    --accent: #35c9b1; --glow: rgba(53, 201, 177, 0.10); --glow2: rgba(60, 130, 240, 0.08);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 28px rgba(0, 0, 0, 0.35);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background:
+    radial-gradient(900px 420px at 30% -10%, var(--glow), transparent 70%),
+    radial-gradient(800px 380px at 80% -5%, var(--glow2), transparent 70%),
+    var(--page);
+  color: var(--fg); font: 14px/1.4 var(--ui);
+  display: grid; place-items: start center; padding: max(10vh, 48px) 20px 40px; overflow-x: hidden;
+}
+main { width: min(640px, 100%); display: flex; flex-direction: column; align-items: center; gap: 28px; }
+.in { animation: up 0.6s var(--ease) both; }
+@keyframes up { from { opacity: 0; transform: translateY(10px); } }
+
+.clock { text-align: center; }
+#time { font: 200 clamp(56px, 11vw, 92px)/1 var(--display); letter-spacing: -2px; font-variant-numeric: tabular-nums; }
+#date { margin-top: 8px; color: var(--muted); font-size: 15px; }
+
+form { width: 100%; position: relative; animation-delay: 0.06s; }
+.pill {
+  width: 100%; height: 54px; border-radius: 27px; display: flex; align-items: center; gap: 12px; padding: 0 20px;
+  background: var(--page); box-shadow: var(--shadow); border: 1px solid var(--line);
+  transition: box-shadow 0.2s var(--ease), border-color 0.2s;
+}
+.pill:focus-within { border-color: var(--accent); box-shadow: var(--shadow), 0 0 0 4px var(--glow); }
+.pill svg { flex: none; width: 18px; height: 18px; fill: none; stroke: var(--faint); stroke-width: 1.8; stroke-linecap: round; }
+#q { flex: 1; min-width: 0; height: 100%; border: 0; outline: none; background: none; color: var(--fg); font: 16px var(--ui); }
+#q::placeholder { color: var(--faint); }
+
+.sites { width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.site {
+  display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 8px 12px; border-radius: 14px;
+  text-decoration: none; color: var(--fg); transition: background 0.18s, transform 0.18s var(--ease);
+  animation: up 0.5s var(--ease) both;
+}
+.site:hover { background: var(--tile); transform: translateY(-2px); }
+.site:active { transform: scale(0.97); }
+.site:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ico { width: 48px; height: 48px; border-radius: 14px; background: var(--tile); display: grid; place-items: center; font: 600 18px var(--display); color: var(--muted); transition: background 0.18s; }
+.site:hover .ico { background: var(--tile-hover); }
+.ico img { width: 24px; height: 24px; border-radius: 4px; }
+.name { max-width: 100%; font-size: 12.5px; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.empty { color: var(--faint); font-size: 13px; text-align: center; animation-delay: 0.12s; }
+@media (max-width: 520px) { .sites { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="clock in"><div id="time">--:--</div><div id="date"></div></div>
+  <form class="in" id="f" autocomplete="off">
+    <label class="pill"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="q" placeholder="Search the web or enter address" spellcheck="false" aria-label="Search the web or enter address"></label>
+  </form>
+  <div class="sites" id="sites"></div>
+  <p class="empty in" id="empty" hidden>Sites you visit often will show up here.</p>
+</main>
+<script>
+"use strict";
+const engines = { google: "Google", bing: "Bing", duckduckgo: "DuckDuckGo", brave: "Brave Search" };
+function tick() {
+  const now = new Date();
+  document.getElementById("time").textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  document.getElementById("date").textContent = now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+}
+tick();
+setInterval(tick, 1000);
+
+const wv = window.driftHost;
+document.getElementById("f").addEventListener("submit", e => {
+  e.preventDefault();
+  const v = document.getElementById("q").value.trim();
+  if (v && wv) wv.postMessage({ type: "go", input: v });
+});
+
+function render(sites) {
+  const box = document.getElementById("sites");
+  box.textContent = "";
+  document.getElementById("empty").hidden = sites.length > 0;
+  sites.forEach((s, i) => {
+    const a = document.createElement("a");
+    a.className = "site"; a.href = s.url; a.title = s.url;
+    a.style.animationDelay = (0.1 + i * 0.035) + "s";
+    const ico = document.createElement("span"); ico.className = "ico";
+    const letter = (s.name || "?").charAt(0).toUpperCase();
+    if (s.favicon) {
+      const img = document.createElement("img"); img.src = s.favicon; img.alt = "";
+      img.onerror = () => { ico.textContent = letter; };
+      ico.appendChild(img);
+    } else ico.textContent = letter;
+    const name = document.createElement("span"); name.className = "name"; name.textContent = s.name;
+    a.append(ico, name);
+    box.appendChild(a);
+  });
+}
+
+if (wv) {
+  wv.addEventListener("message", e => {
+    if (e.data && e.data.type === "topSites") {
+      render(e.data.sites || []);
+      const n = engines[e.data.engine];
+      if (n) document.getElementById("q").placeholder = `Search ${n} or enter address`;
+    }
+  });
+  wv.postMessage({ type: "hello" });
+} else {
+  render([]);
+}
+</script>
+</body>
+</html>

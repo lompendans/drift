@@ -5,3 +5,9 @@ installer/bin/
 installer/obj/
 installer/payload.zip
 *.log
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.kotlin/
+signing/
