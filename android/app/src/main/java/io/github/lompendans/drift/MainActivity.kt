@@ -124,6 +124,7 @@ class MainActivity : Activity() {
         store = Store.load(File(filesDir, "state.json"))
         Look.setLanguage(store.language)
         Look.accent = store.accent
+        Look.square = store.corners == "square"
         applyTheme()
         WindowCompat.setDecorFitsSystemWindows(window, false)
         if (Build.VERSION.SDK_INT >= 30) window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
@@ -137,7 +138,7 @@ class MainActivity : Activity() {
             setBackgroundColor(pageColor)
             clipToOutline = true
             outlineProvider = object : ViewOutlineProvider() {
-                override fun getOutline(view: View, outline: Outline) { outline.setRoundRect(0, 0, view.width, view.height, 16 * density) }
+                override fun getOutline(view: View, outline: Outline) { outline.setRoundRect(0, 0, view.width, view.height, if (Look.square) 0f else 16 * density) }
             }
         }
         ui = WebView(this).apply {
@@ -424,11 +425,11 @@ class MainActivity : Activity() {
 
     private fun sendSettings() = send(JSONObject().put("type", "settings").put("engine", store.searchEngine).put("theme", store.theme)
         .put("adblock", if (store.adblockEnabled) "on" else "off").put("version", BuildConfig.VERSION_NAME).put("themeChoice", Build.VERSION.SDK_INT >= 31)
-        .put("lang", store.language).put("accent", store.accent).put("startClock", if (store.startClock) "on" else "off")
+        .put("lang", store.language).put("accent", store.accent).put("corners", store.corners).put("startClock", if (store.startClock) "on" else "off")
         .put("startShortcuts", if (store.startShortcuts) "on" else "off").put("startBg", store.startBackground).put("customShortcuts", store.shortcuts != null))
 
     private fun startDto() = JSONObject().put("type", "topSites").put("sites", store.startShortcutList()).put("custom", store.shortcuts != null)
-        .put("engine", store.searchEngine).put("accent", store.accent).put("clock", store.startClock).put("shortcuts", store.startShortcuts).put("background", store.startBackground)
+        .put("engine", store.searchEngine).put("accent", store.accent).put("corners", store.corners).put("clock", store.startClock).put("shortcuts", store.startShortcuts).put("background", store.startBackground)
 
     /** Drift's own pages (the start page, the warning) load again, to show a new language or look. */
     private fun reloadDriftPages(onlyStart: Boolean) {
@@ -508,12 +509,13 @@ class MainActivity : Activity() {
                     "theme" -> if (value in setOf("system", "light", "dark")) { store.theme = value!!; saveState(); applyTheme() }
                     "lang" -> if (value in setOf("system", "en", "tr")) { store.language = value!!; Look.setLanguage(value) }
                     "accent" -> if (value in Look.accentNames) { store.accent = value!!; Look.accent = value }
+                    "corners" -> if (value == "rounded" || value == "square") { store.corners = value; Look.square = value == "square"; card.invalidateOutline() }
                     "startClock" -> store.startClock = value == "on"
                     "startShortcuts" -> store.startShortcuts = value == "on"
                     "startBg" -> if (value == "glow" || value == "plain") store.startBackground = value
                     "shortcuts" -> if (value == "reset") store.shortcuts = null
                 }
-                if (str("key") in setOf("accent", "startClock", "startShortcuts", "startBg", "shortcuts", "engine")) reloadDriftPages(onlyStart = true)
+                if (str("key") in setOf("accent", "corners", "startClock", "startShortcuts", "startBg", "shortcuts", "engine")) reloadDriftPages(onlyStart = true)
                 queueSave(); sendSettings(); sendShield()
             }
         }

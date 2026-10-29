@@ -7,6 +7,7 @@ import java.util.Locale
 object Look {
     var lang = "en"
     var accent = "teal"
+    var square = false   // Settings → Corners → Square
 
     /** "system" follows the phone when it's a language Drift speaks. */
     fun setLanguage(choice: String) {

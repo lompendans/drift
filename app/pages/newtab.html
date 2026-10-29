@@ -128,6 +128,8 @@ dialog input.bad { border-color: var(--danger); }
 .actions .primary { background: var(--accent); color: #fff; }
 .actions .primary:hover { background: var(--accent); filter: brightness(1.07); }
 
+/* Square corners (Settings → Appearance → Corners) */
+html.square *:not(.spin):not(.dot):not(.radio):not(.swatches button), html.square *:not(.logo):not(.alogo)::before, html.square *:not(.logo):not(.alogo)::after { border-radius: 0 !important; }
 @media (max-width: 520px) { .sites { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
@@ -334,6 +336,7 @@ if (wv) {
     const m = e.data;
     if (!m || m.type !== "topSites") return;
     accent = m.accent || "teal"; applyAccent();
+    document.documentElement.classList.toggle("square", m.corners === "square");
     $("#clock").hidden = m.clock === false;
     document.body.classList.toggle("plain", m.background === "plain");
     const show = m.shortcuts !== false;

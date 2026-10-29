@@ -150,7 +150,9 @@ class SetupForm : Form
             case Step.Ready:
                 var installed = Installer.InstalledVersion();
                 title = installed == null ? "Install Drift" : installed == Installer.Version ? "Reinstall Drift" : "Update Drift";
-                sub = installed == null ? $"Version {Installer.Version} · a calm, fast browser for Windows"
+                sub = Installer.Online ? (installed == null ? "Downloads the newest Drift (about 160 MB) while it installs."
+                                                            : $"Version {installed} is installed. This downloads the newest Drift.")
+                    : installed == null ? $"Version {Installer.Version} · a calm, fast browser for Windows"
                                         : $"Version {installed} is installed. This installs {Installer.Version}.";
                 break;
             case Step.Working: title = uninstall ? "Removing Drift…" : "Installing Drift…"; sub = status; break;

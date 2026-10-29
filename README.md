@@ -30,7 +30,7 @@
 - **Ads and trackers blocked, built in.** Drift reads the same filter lists as uBlock Origin (uBlock filters, EasyList, EasyPrivacy, annoyances, badware) with its own filter engine: about 230,000 rules, including element hiding. Pages on the badware list are stopped before they open. One click turns blocking off for a site.
 - **One box for everything.** <kbd>Ctrl</kbd>+<kbd>L</kbd> searches the web, your history, your bookmarks and your open tabs at once.
 - **A start page that's yours.** Pin up to 12 shortcuts, rename them, drag them into order, or let Drift show the sites you visit most. Hide the clock or the shortcuts if you like a quieter page.
-- **Make it look right.** Light or dark, six accent colors, a compact tab list, and Settings that keep it all in one place.
+- **Make it look right.** Light or dark, six accent colors, rounded or square corners, a compact tab list, and Settings that keep it all in one place.
 - **English and Türkçe.** Drift follows your computer's or phone's language, or pick one in Settings.
 - **Bookmarks, and bring yours.** Star a page with <kbd>Ctrl</kbd>+<kbd>D</kbd>. Import bookmarks and history from Chrome, Edge, Firefox, Brave, Opera, Vivaldi or Chromium, even while that browser is open.
 - **Chrome extensions.** Add them from the Chrome Web Store or Edge Add-ons, pin them to the toolbar and open their pop-ups.
@@ -74,6 +74,8 @@ The same Drift on your phone: the address bar at the bottom where your thumb is,
 3. Click **Install**. No administrator rights are needed: Drift installs for your user account in `%LocalAppData%\Programs\Drift`, with a Start menu shortcut (and a desktop one if you tick the box).
 
 Prefer not to install? Unzip **[Drift-portable.zip](https://github.com/lompendans/drift/releases/latest/download/Drift-portable.zip)** anywhere and run `Drift.exe`. It updates itself in place too.
+
+On a slow or metered connection? **[Drift-online-setup.exe](https://github.com/lompendans/drift/releases/latest/download/Drift-online-setup.exe)** is a small installer (under 100 KB) that downloads the newest Drift while it installs, and checks the download against its SHA-256 checksum.
 
 Works on Windows 10 and 11 (64-bit), and on Windows on ARM through its x64 emulation.
 
@@ -181,12 +183,12 @@ That runs Drift from source with your normal Drift profile. To try changes witho
 
 | Command | Makes | Needs |
 |---|---|---|
-| `.\build-release.ps1 -Version 2.0.1` | `release/DriftSetup.exe`, `release/Drift-portable.zip` | Windows, Node.js, the [.NET SDK](https://dotnet.microsoft.com/download) (for the installer) |
+| `.\build-release.ps1 -Version 2.0.1` | `release/DriftSetup.exe`, `release/Drift-online-setup.exe`, `release/Drift-portable.zip` | Windows, Node.js, the [.NET SDK](https://dotnet.microsoft.com/download) (for the installer) |
 | `.\build-linux.ps1` | `release/Drift-x86_64.AppImage`, `release/drift_amd64.deb`, `release/Drift-linux-x64.tar.gz` | [Docker](https://www.docker.com/) (it builds inside a Linux container) |
 | `.\build-android.ps1` | `release/Drift-android.apk` | The Android SDK (Android Studio installs it) and Drift's signing key in `signing/` (see below) |
 | `node build/package.js linux x64` (in `app/`) | An unpacked Linux build in `app/out/` | Node.js; run on Linux to keep file permissions |
 
-The file names never change between versions, so `releases/latest/download/<name>` links keep working and the updater can find them. Publish all six files on a release tagged `v<version>`.
+The file names never change between versions, so `releases/latest/download/<name>` links keep working and the updater can find them. Publish all seven files on a release tagged `v<version>`.
 
 The Android app must always be signed with the same key, or phones refuse to install an update over the old version. The key isn't in this repository: `build-android.ps1` reads it from `signing/keystore.properties` (or the file `DRIFT_KEYSTORE` points to). Builds from a fork need their own key and a different `applicationId`.
 

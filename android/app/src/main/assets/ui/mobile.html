@@ -125,6 +125,8 @@ body.panel #scrim { opacity: 1; pointer-events: auto; }
 .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: transform 0.2s var(--ease); }
 .toggle.on { background: var(--accent); }
 .toggle.on::after { transform: translateX(18px); }
+/* Square corners (Settings → Corners): what's meant to be a circle (radio buttons, color swatches) stays round */
+html.square *:not(.radio):not(.swatches button), html.square *::before, html.square *::after { border-radius: 0 !important; }
 .swatches { display: flex; flex-wrap: wrap; gap: 14px; padding: 6px 12px 12px; }
 .swatches button { width: 34px; height: 34px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px var(--pop), 0 0 0 5px transparent; transition: box-shadow 0.18s var(--ease); }
 .swatches button.on { box-shadow: 0 0 0 3px var(--pop), 0 0 0 5px var(--c); }
@@ -366,6 +368,8 @@ body.panel #scrim { opacity: 1; pointer-events: auto; }
     </div>
     <div class="label">Accent color</div>
     <div class="swatches" id="swatches"></div>
+    <div class="label">Corners</div>
+    <div id="corners"></div>
     <div class="label">Start page</div>
     <button class="row" id="sClock"><span class="t"><b>Show the clock</b></span><span class="toggle" id="sClockT"></span></button>
     <button class="row" id="sShortcuts"><span class="t"><b>Show shortcuts</b><span>Tap ⋮ on a shortcut on the start page to edit it.</span></span><span class="toggle" id="sShortcutsT"></span></button>
@@ -785,6 +789,9 @@ function renderSettings() {
   const dark = darkQuery.matches;
   $("#swatches").innerHTML = Object.keys(Accents).map(k => `<button data-accent="${k}" class="${settings.accent === k ? "on" : ""}" style="--c:${Accents[k][dark ? 1 : 0]}" aria-label="${k}"></button>`).join("");
   document.querySelectorAll("[data-accent]").forEach(b => b.onclick = () => { settings.accent = b.dataset.accent; applyAccent(); renderSettings(); post({ type: "setting", key: "accent", value: b.dataset.accent }); });
+  $("#corners").innerHTML = [["rounded", T("Rounded")], ["square", T("Square")]].map(([k, v]) => `<button class="row" data-corners="${k}"><span class="radio${(settings.corners || "rounded") === k ? " on" : ""}"></span><span class="t"><b>${v}</b></span></button>`).join("");
+  document.querySelectorAll("[data-corners]").forEach(b => b.onclick = () => post({ type: "setting", key: "corners", value: b.dataset.corners }));
+  document.documentElement.classList.toggle("square", settings.corners === "square");
   $("#sClockT").classList.toggle("on", settings.startClock !== "off");
   $("#sShortcutsT").classList.toggle("on", settings.startShortcuts !== "off");
   $("#sPlainT").classList.toggle("on", settings.startBg !== "plain");

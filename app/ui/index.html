@@ -244,6 +244,8 @@ body.overlay #settings.show { transform: translate(-50%, -50%) scale(1); }
 .swatches button { width: 26px; height: 26px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px var(--pop), 0 0 0 4px transparent; transition: box-shadow 0.18s var(--ease), transform 0.15s var(--ease); }
 .swatches button:hover { transform: scale(1.1); }
 .swatches button.on { box-shadow: 0 0 0 2px var(--pop), 0 0 0 4px var(--c); }
+/* Square corners (Settings → Appearance → Corners) */
+html.square *:not(.spin):not(.dot):not(.radio):not(.swatches button), html.square *:not(.logo):not(.alogo)::before, html.square *:not(.logo):not(.alogo)::after { border-radius: 0 !important; }
 #app.compact .tab-in { height: 30px; }
 #app.compact .new-tab { height: 32px; }
 .setrow { padding: 12px 20px; display: grid; gap: 8px; }
@@ -970,6 +972,10 @@ body.switching #switcher.show { opacity: 1; visibility: visible; transform: tran
       <button data-v="teal" title="Teal"></button><button data-v="blue" title="Blue"></button><button data-v="purple" title="Purple"></button>
       <button data-v="pink" title="Pink"></button><button data-v="orange" title="Orange"></button><button data-v="graphite" title="Graphite"></button>
     </div></div>
+    <div class="setrow"><span>Corners</span><div class="seg" data-key="corners">
+      <span class="thumb"></span>
+      <button data-v="rounded">Rounded</button><button data-v="square">Square</button>
+    </div></div>
     <div class="setrow"><span>Tab list</span><div class="seg" data-key="density">
       <span class="thumb"></span>
       <button data-v="comfortable">Comfortable</button><button data-v="compact">Compact</button>
@@ -1029,7 +1035,8 @@ const app = $("#app"), card = $("#card"), snap = $("#snap"), tabsEl = $("#tabs")
 let lastRect = "";
 function postRect() {
   const r = card.getBoundingClientRect(), d = 1;   // Electron places views in CSS pixels
-  const msg = { type: "rect", x: Math.round(r.left * d), y: Math.round(r.top * d), w: Math.round(r.width * d), h: Math.round(r.height * d), r: Math.round(10 * d) };
+  const radius = document.documentElement.classList.contains("square") ? 0 : 10;
+  const msg = { type: "rect", x: Math.round(r.left * d), y: Math.round(r.top * d), w: Math.round(r.width * d), h: Math.round(r.height * d), r: Math.round(radius * d) };
   const key = JSON.stringify(msg);
   if (key !== lastRect) { lastRect = key; post(msg); }
   document.documentElement.style.setProperty("--cx", (r.left + r.width / 2) + "px");
@@ -2517,6 +2524,8 @@ function applyLook() {
   document.documentElement.style.setProperty("--accent-soft", alpha(c, dark ? 0.16 : 0.12));
   document.querySelectorAll(".swatches button").forEach(b => b.style.setProperty("--c", Accents[b.dataset.v][dark ? 1 : 0]));
   app.classList.toggle("compact", settings.density === "compact");
+  document.documentElement.classList.toggle("square", settings.corners === "square");
+  postRect();   // the page view's corners follow
   $("#homeBtn").hidden = settings.homeButton === "off";
   $("#scReset").hidden = !settings.customShortcuts;
   $("#scNote").textContent = T(settings.customShortcuts ? "Hover a shortcut on the start page to edit it." : "Your shortcuts are the sites you visit most.");

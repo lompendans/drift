@@ -165,7 +165,7 @@
     "Import bookmarks and history ›": "Yer imlerini ve geçmişi içe aktar ›", "Privacy": "Gizlilik", "Privacy and data": "Gizlilik ve veriler", "Site permissions ›": "Site izinleri ›",
     "About Drift ›": "Drift hakkında ›", "On startup": "Açılışta", "Reopen your tabs": "Sekmelerinizi yeniden aç", "Open the home page": "Ana sayfayı aç",
     "Accent color": "Vurgu rengi", "Teal": "Turkuaz", "Blue": "Mavi", "Purple": "Mor", "Pink": "Pembe", "Orange": "Turuncu", "Graphite": "Grafit",
-    "Tab list": "Sekme listesi", "Comfortable": "Rahat", "Compact": "Sıkışık", "Show the Home button": "Ana sayfa düğmesini göster",
+    "Tab list": "Sekme listesi", "Corners": "Köşeler", "Rounded": "Yuvarlak", "Square": "Köşeli", "Comfortable": "Rahat", "Compact": "Sıkışık", "Show the Home button": "Ana sayfa düğmesini göster",
     "Start page": "Başlangıç sayfası", "Show the clock": "Saati göster", "Show shortcuts": "Kısayolları göster", "Background": "Arka plan",
     "Soft glow": "Yumuşak ışıltı", "Plain": "Düz", "Reset shortcuts to most visited ›": "Kısayolları en çok ziyaret edilenlere sıfırla ›",
     "Your shortcuts are the sites you visit most.": "Kısayollarınız en çok ziyaret ettiğiniz sitelerdir.",
@@ -317,14 +317,15 @@
   root.LANG = I.lang;
   root.LOCALE = I.locale;
   document.documentElement.lang = I.lang;   // capitals follow the language too: "dil" becomes "DİL"
-  if (I.lang === "en") return;
 
-  // dates and numbers follow the chosen language, not the computer's
-  for (const [P, keys] of [[Number.prototype, ["toLocaleString"]], [Date.prototype, ["toLocaleString", "toLocaleDateString", "toLocaleTimeString"]]])
-    for (const k of keys) {
-      const f = P[k];
-      P[k] = function (loc, opt) { return f.call(this, loc == null || (Array.isArray(loc) && !loc.length) ? I.locale : loc, opt); };
-    }
+  // dates and numbers follow the chosen language when the computer's is a different one (English on a Turkish PC)
+  if (!(navigator.language || "").toLowerCase().startsWith(I.lang))
+    for (const [P, keys] of [[Number.prototype, ["toLocaleString"]], [Date.prototype, ["toLocaleString", "toLocaleDateString", "toLocaleTimeString"]]])
+      for (const k of keys) {
+        const f = P[k];
+        P[k] = function (loc, opt) { return f.call(this, loc == null || (Array.isArray(loc) && !loc.length) ? I.locale : loc, opt); };
+      }
+  if (I.lang === "en") return;
 
   // what people and websites wrote stays as it is: tab and page titles, addresses, file names, a site's own message
   const Keep = "script, style, textarea, [translate=no], .ttl, .rt b, .ht, .hh, #addrText .host, #addrText .path, #jdMsg, .srow .d, .dname, .pmhost, .swhead span, .toast .host, .toast .title, .toast .body, .exrow .ext b, #q, .site .name";

@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Net;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
 namespace DriftSetup;
@@ -12,7 +15,13 @@ static class Installer
     public const string Site = "https://lompendans.github.io/drift/";
     const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\Drift";
 
-    public static string Version => Assembly.GetExecutingAssembly().GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.0.0";
+    public static string Version => downloadedVersion ?? (Assembly.GetExecutingAssembly().GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.0.0");
+
+    /// <summary>The online installer: Drift's files aren't inside it, so it downloads the newest release while installing.</summary>
+    public static bool Online => Assembly.GetExecutingAssembly().GetManifestResourceInfo("payload.zip") == null;
+    const string LatestApi = "https://api.github.com/repos/lompendans/drift/releases/latest";
+    const string PortableZip = "Drift-portable.zip";
+    static string downloadedVersion;
     public static string DefaultDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Drift");
     static string StartMenuLink => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "Drift.lnk");
     static string DesktopLink => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Drift.lnk");
@@ -62,11 +71,67 @@ static class Installer
         return list;
     }
 
-    /// <summary>Copies Drift's files into <paramref name="dir"/>, replacing what's there. Reports progress 0–1.</summary>
-    public static void CopyFiles(string dir, Action<double> progress)
+    /// <summary>
+    /// Downloads the newest release's portable zip to a temporary file and checks it against the SHA-256 checksum GitHub
+    /// publishes for it. Reports progress 0–1. Returns the file's path.
+    /// </summary>
+    public static string Download(Action<double> progress)
     {
-        using var payload = Assembly.GetExecutingAssembly().GetManifestResourceStream("payload.zip")
-                            ?? throw new InvalidDataException("This installer is missing Drift's files.");
+        ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+        string release;
+        using (var web = new WebClient())
+        {
+            web.Headers[HttpRequestHeader.UserAgent] = "DriftSetup/" + Version;
+            web.Headers[HttpRequestHeader.Accept] = "application/vnd.github+json";
+            try { release = web.DownloadString(LatestApi); }
+            catch (WebException) { throw new IOException("Couldn't reach GitHub. Check your internet connection and try again."); }
+        }
+        // the asset's object lists its name, then its download address and checksum
+        var asset = Regex.Match(release, "\"name\"\\s*:\\s*\"" + Regex.Escape(PortableZip) + "\"(?:(?!\"name\"\\s*:).)*", RegexOptions.Singleline).Value;
+        var url = Regex.Match(asset, "\"browser_download_url\"\\s*:\\s*\"([^\"]+)\"").Groups[1].Value;
+        var sha = Regex.Match(asset, "\"digest\"\\s*:\\s*\"sha256:([0-9a-f]{64})\"").Groups[1].Value;
+        if (url.Length == 0 || sha.Length == 0) throw new InvalidDataException("The newest Drift release has no Windows download yet. Try again later.");
+        var tag = Regex.Match(release, "\"tag_name\"\\s*:\\s*\"v?([^\"]+)\"").Groups[1].Value;
+
+        var file = Path.Combine(Path.GetTempPath(), "Drift-setup-" + Guid.NewGuid().ToString("N") + ".zip");
+        try
+        {
+            var request = (HttpWebRequest)WebRequest.Create(url);
+            request.UserAgent = "DriftSetup/" + Version;
+            using (var response = request.GetResponse())
+            using (var input = response.GetResponseStream())
+            using (var output = File.Create(file))
+            using (var hash = SHA256.Create())
+            {
+                long total = response.ContentLength, done = 0;
+                var buffer = new byte[81920];
+                for (int n; (n = input.Read(buffer, 0, buffer.Length)) > 0;)
+                {
+                    output.Write(buffer, 0, n);
+                    hash.TransformBlock(buffer, 0, n, null, 0);
+                    done += n;
+                    if (total > 0) progress?.Invoke(Math.Min(1, done / (double)total));
+                }
+                hash.TransformFinalBlock(buffer, 0, 0);
+                if (!BitConverter.ToString(hash.Hash).Replace("-", "").Equals(sha, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("The download was damaged on the way. Try again.");
+            }
+            if (tag.Length > 0) downloadedVersion = tag;
+            return file;
+        }
+        catch (WebException) { try { File.Delete(file); } catch { } throw new IOException("The download stopped. Check your internet connection and try again."); }
+        catch { try { File.Delete(file); } catch { } throw; }
+    }
+
+    /// <summary>
+    /// Copies Drift's files into <paramref name="dir"/>, replacing what's there: from inside this installer, or from a
+    /// downloaded portable zip (which keeps them in a "Drift" folder). Reports progress 0–1.
+    /// </summary>
+    public static void CopyFiles(string dir, Action<double> progress, string downloaded = null)
+    {
+        using var payload = downloaded != null ? File.OpenRead(downloaded)
+                            : Assembly.GetExecutingAssembly().GetManifestResourceStream("payload.zip")
+                              ?? throw new InvalidDataException("This installer is missing Drift's files.");
         using var zip = new ZipArchive(payload, ZipArchiveMode.Read);
         Directory.CreateDirectory(dir);
         RemoveOldVersion(dir);
@@ -74,7 +139,9 @@ static class Installer
         for (int i = 0; i < files.Count; i++)
         {
             var e = files[i];
-            var target = Path.GetFullPath(Path.Combine(dir, e.FullName));
+            var name = downloaded != null ? e.FullName.Replace('\\', '/') : e.FullName;
+            if (downloaded != null) { if (!name.StartsWith("Drift/", StringComparison.OrdinalIgnoreCase)) continue; name = name.Substring(6); }
+            var target = Path.GetFullPath(Path.Combine(dir, name));
             if (!target.StartsWith(Path.GetFullPath(dir) + "\\", StringComparison.OrdinalIgnoreCase)) continue;   // stay inside the folder
             Directory.CreateDirectory(Path.GetDirectoryName(target));
             Retry(() =>
@@ -150,8 +217,23 @@ static class Installer
     /// <summary>A full install: files, uninstaller, Start menu (and desktop) shortcut, and the entry in Windows' app list.</summary>
     public static void Install(string dir, bool desktopShortcut, Action<double, string> progress)
     {
-        progress(0.02, "Copying Drift's files…");
-        CopyFiles(dir, p => progress(0.05 + p * 0.8, "Copying Drift's files…"));
+        string downloaded = null;
+        try
+        {
+            if (Online)
+            {
+                progress(0.01, "Downloading Drift…");
+                downloaded = Download(p => progress(0.01 + p * 0.6, $"Downloading Drift… {p:P0}"));
+                progress(0.62, "Copying Drift's files…");
+                CopyFiles(dir, p => progress(0.62 + p * 0.24, "Copying Drift's files…"), downloaded);
+            }
+            else
+            {
+                progress(0.02, "Copying Drift's files…");
+                CopyFiles(dir, p => progress(0.05 + p * 0.8, "Copying Drift's files…"));
+            }
+        }
+        finally { if (downloaded != null) try { File.Delete(downloaded); } catch { } }
         progress(0.88, "Adding shortcuts…");
         CopySelf(dir);
         var exe = Path.Combine(dir, "Drift.exe");

@@ -35,7 +35,8 @@ const defaults = () => ({
   Permissions: [],          // [{ Origin, Kind, State }]: allow / block answers the user chose to keep
   Language: "system",       // system, en, tr
   Accent: "teal",
-  Density: "comfortable",   // comfortable, compact: height of the tab list's rows
+  Density: "comfortable",
+  Corners: "rounded",       // rounded, square   // comfortable, compact: height of the tab list's rows
   ShowHomeButton: true,
   StartupMode: "restore",   // restore: reopen last time's tabs; home: start with the home page
   StartClock: true,

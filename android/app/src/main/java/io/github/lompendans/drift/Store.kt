@@ -33,6 +33,7 @@ class Store(private val file: File) {
     val downloads = mutableListOf<DownloadRecord>()
     var language = "system"
     var accent = "teal"
+    var corners = "rounded"
     var startClock = true
     var startShortcuts = true
     var startBackground = "glow"
@@ -70,6 +71,7 @@ class Store(private val file: File) {
                 o.optJSONArray("Permissions")?.let { a -> for (i in 0 until a.length()) a.getJSONObject(i).let { p -> s.permissions.add(SavedPermission(p.optString("Origin"), p.optString("Kind"), p.optString("State"))) } }
                 s.language = o.str("Language") ?: s.language
                 s.accent = o.str("Accent") ?: s.accent
+                s.corners = o.str("Corners") ?: s.corners
                 s.startClock = o.optBoolean("StartClock", true)
                 s.startShortcuts = o.optBoolean("StartShortcuts", true)
                 s.startBackground = o.str("StartBackground") ?: s.startBackground
@@ -95,7 +97,7 @@ class Store(private val file: File) {
             o.put("Bookmarks", JSONArray(bookmarks.map { JSONObject().put("Url", it.url).put("Title", it.title).put("Folder", it.folder).put("Favicon", it.favicon).put("Added", iso(it.added)) }))
             o.put("Permissions", JSONArray(permissions.map { JSONObject().put("Origin", it.origin).put("Kind", it.kind).put("State", it.state) }))
             o.put("Downloads", JSONArray(downloads.map { JSONObject().put("Id", it.id).put("Url", it.url).put("Name", it.name).put("Started", iso(it.started)) }))
-            o.put("Language", language).put("Accent", accent).put("StartClock", startClock).put("StartShortcuts", startShortcuts).put("StartBackground", startBackground)
+            o.put("Language", language).put("Accent", accent).put("Corners", corners).put("StartClock", startClock).put("StartShortcuts", startShortcuts).put("StartBackground", startBackground)
             o.put("Shortcuts", shortcuts?.let { l -> JSONArray(l.map { JSONObject().put("Name", it.name).put("Url", it.url) }) } ?: JSONObject.NULL)
             val tmp = File(file.path + ".tmp")
             tmp.writeText(o.toString())

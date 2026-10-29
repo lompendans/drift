@@ -487,7 +487,7 @@ function sendSettings() {
   const s = D.store;
   send({ type: "settings", engine: s.SearchEngine, theme: s.Theme, sidebarCollapsed: !!s.SidebarCollapsed, home: s.HomePage || "",
     adblock: onOff(s.AdblockEnabled), version: process.versions.chrome, drift: app.getVersion(),
-    lang: s.Language || "system", accent: s.Accent, density: s.Density, homeButton: onOff(s.ShowHomeButton), startup: s.StartupMode,
+    lang: s.Language || "system", accent: s.Accent, density: s.Density, corners: s.Corners, homeButton: onOff(s.ShowHomeButton), startup: s.StartupMode,
     startClock: onOff(s.StartClock), startShortcuts: onOff(s.StartShortcuts), startBg: s.StartBackground, customShortcuts: Array.isArray(s.Shortcuts) });
 }
 
@@ -496,7 +496,7 @@ function sendSettings() {
 const startDto = () => {
   const s = D.store;
   return { type: "topSites", sites: s.shortcuts(), custom: Array.isArray(s.Shortcuts), engine: s.SearchEngine,
-    accent: s.Accent, clock: s.StartClock, shortcuts: s.StartShortcuts, background: s.StartBackground };
+    accent: s.Accent, corners: s.Corners, clock: s.StartClock, shortcuts: s.StartShortcuts, background: s.StartBackground };
 };
 function sendStart() {
   for (const t of D.tabs) if (t.wc && !t.wc.isDestroyed() && isNewTab(t.wc.getURL())) t.wc.send("page", startDto());
@@ -665,6 +665,7 @@ function onUiMessage(m) {
       if (key === "theme" && ["system", "light", "dark"].includes(value)) { s.Theme = value; nativeTheme.themeSource = value; }
       if (key === "accent" && ["teal", "blue", "purple", "pink", "orange", "graphite"].includes(value)) s.Accent = value;
       if (key === "density" && ["comfortable", "compact"].includes(value)) s.Density = value;
+      if (key === "corners" && ["rounded", "square"].includes(value)) s.Corners = value;
       if (key === "homeButton") s.ShowHomeButton = value === "on";
       if (key === "startup" && ["restore", "home"].includes(value)) s.StartupMode = value;
       if (key === "startClock") s.StartClock = value === "on";
@@ -674,7 +675,7 @@ function onUiMessage(m) {
       queueSave();
       if (key === "lang" && ["system", ...i18n.languages].includes(value)) { s.Language = value; if (relanguage()) break; }
       sendSettings();
-      if (["accent", "startClock", "startShortcuts", "startBg", "shortcuts", "engine"].includes(key)) sendStart();
+      if (["accent", "corners", "startClock", "startShortcuts", "startBg", "shortcuts", "engine"].includes(key)) sendStart();
       break;
     }
   }

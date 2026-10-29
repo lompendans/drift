@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Drift's installer: one .exe with Drift's files inside (payload.zip, made by build-release.ps1). -->
+  <!-- Drift's installer: one .exe with Drift's files inside (payload.zip, made by build-release.ps1).
+       Built with /p:Online=true it leaves them out and downloads them while installing (Drift-online-setup.exe). -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net48</TargetFramework>
@@ -33,7 +34,7 @@
   <ItemGroup>
     <Reference Include="System.IO.Compression" />
     <Compile Include="..\Drift\Native.cs" Link="Native.cs" />
-    <EmbeddedResource Include="payload.zip" LogicalName="payload.zip" Condition="Exists('payload.zip')" />
+    <EmbeddedResource Include="payload.zip" LogicalName="payload.zip" Condition="Exists('payload.zip') And '$(Online)' != 'true'" />
   </ItemGroup>
 
 </Project>

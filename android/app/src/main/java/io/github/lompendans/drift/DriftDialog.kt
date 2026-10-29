@@ -35,7 +35,7 @@ object DriftDialog {
         val pop = if (dark) Color.rgb(34, 35, 39) else Color.WHITE
         val soft = if (dark) Color.argb(18, 255, 255, 255) else Color.argb(15, 15, 23, 42)
         val accent = Look.accentColor(dark)
-        fun round(color: Int, r: Int, stroke: Int = 0) = GradientDrawable().apply { setColor(color); cornerRadius = dp(r).toFloat(); if (stroke != 0) setStroke(dp(1), stroke) }
+        fun round(color: Int, r: Int, stroke: Int = 0) = GradientDrawable().apply { setColor(color); cornerRadius = if (Look.square) 0f else dp(r).toFloat(); if (stroke != 0) setStroke(dp(1), stroke) }
 
         val title = when (kind) { "leave" -> Look.t("Leave site?"); else -> Look.says(host.ifEmpty { Look.t("This page") }) }
         val body = if (kind == "leave") Look.t("Changes you made may not be saved.") else message

@@ -1,6 +1,7 @@
 # Builds a Drift release for Windows into .\release:
 #   DriftSetup.exe        the installer (Drift's files are inside it); also what Drift's updater downloads
 #   Drift-portable.zip    Drift without installing
+#   Drift-online-setup.exe  a small installer that downloads Drift while installing
 # The names stay the same in every release, so links to releases/latest/download/<name> always work.
 # Linux files come from build-linux.ps1. Usage: .\build-release.ps1 -Version 2.0.0
 param([Parameter(Mandatory = $true)][string]$Version)
@@ -37,6 +38,11 @@ dotnet build "$root\installer\DriftSetup.csproj" -c Release -nologo -v q "/p:Ver
 if ($LASTEXITCODE) { throw 'Installer build failed' }
 $setup = Join-Path $out "DriftSetup.exe"
 Copy-Item (Join-Path $root 'installer\bin\Release\net48\DriftSetup.exe') $setup
+# the same installer without Drift's files inside; it downloads Drift-portable.zip from the latest release instead.
+# (Its name mustn't start with "DriftSetup": Drift 1.x's updater takes any release file named DriftSetup*.exe.)
+dotnet build "$root\installer\DriftSetup.csproj" -c Release -nologo -v q "/p:Version=$Version" /p:Online=true "/p:OutDir=$root/installer/bin/online/"
+if ($LASTEXITCODE) { throw 'Online installer build failed' }
+Copy-Item (Join-Path $root 'installer\bin\online\DriftSetup.exe') (Join-Path $out 'Drift-online-setup.exe')
 Remove-Item $stage -Recurse -Force
 
 Get-ChildItem $out -File | ForEach-Object {
