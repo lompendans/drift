@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https:/browser.lompendans.com/"><b>Download</b></a> ·
+  <a href="https://browser.lompendans.com/"><b>Download</b></a> ·
   <a href="https://github.com/lompendans/drift/releases/latest">Latest release</a> ·
   <a href="#install">Install</a> ·
   <a href="#build-it-yourself">Build it yourself</a>
