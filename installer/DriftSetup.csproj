@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Drift's installer: one .exe with Drift's files inside (payload.zip, made by build-release.ps1). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>DriftSetup</AssemblyName>
+    <RootNamespace>DriftSetup</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\Drift\drift.ico</ApplicationIcon>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <Version>1.0.2</Version>
+    <Product>Drift Setup</Product>
+    <Company>lompendans</Company>
+    <NoWarn>$(NoWarn);WFO1000</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System" />
+    <Using Include="System.Collections.Generic" />
+    <Using Include="System.Drawing" />
+    <Using Include="System.IO" />
+    <Using Include="System.Linq" />
+    <Using Include="System.Threading.Tasks" />
+    <Using Include="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.IO.Compression" />
+    <Compile Include="..\Drift\Native.cs" Link="Native.cs" />
+    <EmbeddedResource Include="payload.zip" LogicalName="payload.zip" Condition="Exists('payload.zip')" />
+  </ItemGroup>
+
+</Project>

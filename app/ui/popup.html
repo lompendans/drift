@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Drift</title>
+<style>
+/* Drift's small windows: the right-click menu and notification pop-ups. The window is transparent and a little
+   larger than what it shows, so the rounded panel can have a soft shadow. */
+:root {
+  --fg: #17191d; --muted: #646a74; --faint: #9aa0a9; --hover: rgba(15, 23, 42, 0.06); --line: rgba(15, 23, 42, 0.08);
+  --accent: #0d9a87; --pop: #ffffff; --ring: rgba(15, 23, 42, 0.1); --shadow: rgba(15, 23, 42, 0.18);
+  --ui: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --fg: #ececef; --muted: #a2a6ad; --faint: #6e737b; --hover: rgba(255, 255, 255, 0.07); --line: rgba(255, 255, 255, 0.08);
+    --accent: #35c9b1; --pop: #26272b; --ring: rgba(255, 255, 255, 0.1); --shadow: rgba(0, 0, 0, 0.5); color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: transparent; overflow: hidden; }
+body { font: 13px/1.35 var(--ui); color: var(--fg); user-select: none; cursor: default; padding: 12px; }
+.panel { background: var(--pop); border-radius: 10px; box-shadow: 0 0 0 1px var(--ring), 0 10px 28px var(--shadow); opacity: 0; transform: translateY(-4px) scale(0.98); transition: opacity 0.12s ease, transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.shown .panel { opacity: 1; transform: none; }
+svg { display: block; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* menu */
+.menu { padding: 5px; min-width: 220px; max-width: 360px; display: inline-block; }
+.item { display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 10px 0 8px; border-radius: 6px; white-space: nowrap; }
+.item .ic { width: 16px; color: var(--muted); flex: none; }
+.item .t { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.item .k { color: var(--faint); font-size: 12px; margin-left: 18px; }
+.item.on, .item:hover { background: var(--hover); }
+.item.off { color: var(--faint); }
+.item.off .ic { color: var(--faint); }
+.item.off:hover { background: none; }
+.item.strong .t { font-weight: 600; }
+.sep { height: 1px; background: var(--line); margin: 5px 8px; }
+
+/* notification */
+.toast { width: 360px; padding: 14px 14px 14px 14px; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+.toast .ico { width: 36px; height: 36px; border-radius: 9px; background: var(--hover); display: grid; place-items: center; overflow: hidden; color: var(--muted); }
+.toast .ico img { width: 100%; height: 100%; object-fit: cover; }
+.toast .host { font-size: 12px; color: var(--muted); margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toast .title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toast .body { color: var(--muted); margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+.toast .x { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; color: var(--muted); border: 0; background: none; margin: -4px -4px 0 0; }
+.toast .x:hover { background: var(--hover); color: var(--fg); }
+.toast .x svg { width: 12px; height: 12px; }
+.toast:hover { box-shadow: 0 0 0 1px var(--ring), 0 12px 32px var(--shadow); }
+</style>
+</head>
+<body>
+<script>
+"use strict";
+const icons = {
+  back: '<path d="M15 18l-6-6 6-6"/>', forward: '<path d="M9 18l6-6-6-6"/>',
+  reload: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+  tab: '<rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 9h18"/><path d="M12 12v5M9.5 14.5h5"/>',
+  open: '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+  cut: '<circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.2 15.8L19 4M15.8 15.8L5 4"/>',
+  paste: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h4"/>',
+  undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>', redo: '<path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/>',
+  all: '<rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2.5"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>',
+  save: '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>',
+  print: '<path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M7 14h10v6H7z"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
+  code: '<path d="M9 8l-5 4 5 4M15 8l5 4-5 4"/>',
+  spell: '<path d="M4 16l4-11 4 11M5.5 12h5"/><path d="M14 15l2.5 2.5L21 12"/>',
+  play: '<path d="M7 5l12 7-12 7z"/>', loop: '<path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/>',
+  pip: '<rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', puzzle: '<path d="M10 4a2 2 0 1 1 4 0v2h4v4h-1a2 2 0 1 0 0 4h1v4h-4v-1a2 2 0 1 0-4 0v1H6v-4h1a2 2 0 1 0 0-4H6V6h4z"/>',
+  bell: '<path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4z"/><path d="M10 21h4"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>',
+};
+const svg = name => `<svg viewBox="0 0 24 24">${icons[name] || ""}</svg>`;
+const send = m => driftHost.postMessage(m);
+let mode = null, items = [], sel = -1;
+
+function reportSize() {
+  const el = document.body.firstElementChild;
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  send({ type: "size", w: Math.ceil(r.width + 24), h: Math.ceil(r.height + 24) });
+}
+
+/* ---------- menu ---------- */
+function showMenu(entries) {
+  mode = "menu"; items = [];
+  const m = document.createElement("div"); m.className = "panel menu";
+  for (const e of entries) {
+    if (e.line) { const s = document.createElement("div"); s.className = "sep"; m.appendChild(s); continue; }
+    const it = document.createElement("div");
+    it.className = "item" + (e.enabled === false ? " off" : "") + (e.strong ? " strong" : "");
+    it.innerHTML = `<span class="ic">${e.checked ? svg("check") : svg(e.icon)}</span><span class="t"></span>${e.shortcut ? `<span class="k"></span>` : ""}`;
+    it.querySelector(".t").textContent = e.text;
+    if (e.shortcut) it.querySelector(".k").textContent = e.shortcut;
+    const index = items.length;
+    items.push({ e, el: it });
+    if (e.enabled !== false) {
+      it.onmouseenter = () => select(index);
+      it.onmouseup = ev => { if (ev.button === 0 || ev.button === 2) pick(index); };
+    }
+    m.appendChild(it);
+  }
+  document.body.textContent = "";
+  document.body.appendChild(m);
+  requestAnimationFrame(reportSize);
+}
+function select(i) {
+  sel = i;
+  items.forEach((x, n) => x.el.classList.toggle("on", n === i));
+}
+function pick(i) {
+  const x = items[i];
+  if (!x || x.e.enabled === false) return;
+  send({ type: "pick", id: x.e.id });
+}
+function move(d) {
+  if (!items.length) return;
+  let i = sel;
+  for (let n = 0; n < items.length; n++) {
+    i = (i + d + items.length) % items.length;
+    if (items[i].e.enabled !== false) { select(i); return; }
+  }
+}
+addEventListener("keydown", e => {
+  if (mode !== "menu") return;
+  if (e.key === "ArrowDown") { move(1); e.preventDefault(); }
+  else if (e.key === "ArrowUp") { move(-1); e.preventDefault(); }
+  else if (e.key === "Enter" || e.key === " ") { if (sel >= 0) pick(sel); e.preventDefault(); }
+  else if (e.key === "Escape") send({ type: "cancel" });
+});
+addEventListener("contextmenu", e => e.preventDefault());
+
+/* ---------- notification ---------- */
+function showToast(t) {
+  mode = "toast";
+  const el = document.createElement("div"); el.className = "panel toast";
+  el.innerHTML = `<div class="ico">${svg("bell")}</div><div><div class="host"></div><div class="title"></div><div class="body"></div></div><button class="x" title="Dismiss">${svg("x")}</button>`;
+  el.querySelector(".host").textContent = t.host || "";
+  el.querySelector(".title").textContent = t.title || t.host || "";
+  el.querySelector(".body").textContent = t.body || "";
+  el.querySelector(".body").hidden = !t.body;
+  if (t.icon) {
+    const img = new Image();
+    img.onload = () => { const box = el.querySelector(".ico"); box.textContent = ""; box.appendChild(img); };
+    img.src = t.icon;
+  }
+  el.onclick = e => { if (!e.target.closest(".x")) send({ type: "click" }); };
+  el.querySelector(".x").onclick = () => send({ type: "dismiss" });
+  el.onmouseenter = () => send({ type: "hover", on: true });
+  el.onmouseleave = () => send({ type: "hover", on: false });
+  document.body.textContent = "";
+  document.body.appendChild(el);
+  requestAnimationFrame(reportSize);
+}
+
+driftHost.addEventListener("message", ({ data: m }) => {
+  if (m.type === "menu") showMenu(m.entries);
+  else if (m.type === "toast") showToast(m);
+  else if (m.type === "show") requestAnimationFrame(() => document.body.classList.add("shown"));
+  else if (m.type === "hide") document.body.classList.remove("shown");
+});
+send({ type: "ready" });
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "drift",
+  "productName": "Drift",
+  "version": "2.0.0",
+  "description": "A calm, fast browser",
+  "homepage": "https://lompendans.github.io/drift/",
+  "desktopName": "drift.desktop",
+  "main": "src/main.js",
+  "author": {
+    "name": "Drift",
+    "email": "drift@users.noreply.github.com"
+  },
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "44.7.1"
+  }
+}
