@@ -29,6 +29,9 @@
 - **Tabs down the side.** Long titles stay readable. Drag to reorder, collapse the sidebar with <kbd>Ctrl</kbd>+<kbd>B</kbd>, and flip between recent tabs with <kbd>Ctrl</kbd>+<kbd>Tab</kbd>, the way <kbd>Alt</kbd>+<kbd>Tab</kbd> works. Tabs restored at startup sleep until you open them.
 - **Ads and trackers blocked, built in.** Drift reads the same filter lists as uBlock Origin (uBlock filters, EasyList, EasyPrivacy, annoyances, badware) with its own filter engine: about 230,000 rules, including element hiding. Pages on the badware list are stopped before they open. One click turns blocking off for a site.
 - **One box for everything.** <kbd>Ctrl</kbd>+<kbd>L</kbd> searches the web, your history, your bookmarks and your open tabs at once.
+- **A start page that's yours.** Pin up to 12 shortcuts, rename them, drag them into order, or let Drift show the sites you visit most. Hide the clock or the shortcuts if you like a quieter page.
+- **Make it look right.** Light or dark, six accent colors, a compact tab list, and Settings that keep it all in one place.
+- **English and Türkçe.** Drift follows your computer's or phone's language, or pick one in Settings.
 - **Bookmarks, and bring yours.** Star a page with <kbd>Ctrl</kbd>+<kbd>D</kbd>. Import bookmarks and history from Chrome, Edge, Firefox, Brave, Opera, Vivaldi or Chromium, even while that browser is open.
 - **Chrome extensions.** Add them from the Chrome Web Store or Edge Add-ons, pin them to the toolbar and open their pop-ups.
 - **Polite prompts.** Camera, microphone, location and notification requests appear in a slim bar above the page. Page dialogs, sign-in boxes, notifications, the right-click menu and the screen-sharing picker are all Drift's own.
@@ -207,6 +210,7 @@ app/                      Drift itself (Electron)
   src/preload-*.js        the bridges between pages and Drift
   ui/index.html           the whole interface: sidebar, address bar, panels, dialogs
   ui/popup.html           menus and notifications
+  ui/i18n.js              translations (Turkish), used by every Drift page on desktop and Android
   pages/                  the start page and the "dangerous site" warning
   build/                  icons, packaging (package.js) and the Linux build (linux.sh)
   test/                   a test hook for driving Drift from scripts (only loaded from source)
@@ -215,6 +219,7 @@ android/                  Drift for Android (Kotlin + Android System WebView)
   app/src/main/assets/ui/mobile.html   the phone interface: bar, tab grid, menus, panels
   app/src/main/java/…/MainActivity.kt  tabs, page views, prompts, downloads, messages to and from the UI
   app/src/main/java/…/FilterEngine.kt  the same filter engine as desktop, in Kotlin
+  (the start page, warning page and ui/i18n.js are copied in from app/ at build time)
 install.sh                the Linux install script
 index.html                the download page (lompendans.github.io/drift)
 ```
@@ -224,6 +229,8 @@ The interface (`ui/index.html`) is one web page that fills the window. Each tab 
 ## Contributing
 
 Bug reports and pull requests are welcome. For a bug, say what you did, what you expected and what happened, plus your system and Drift version (Drift's About panel has a **Copy info** button). For a bigger change, open an issue first so we can talk it through.
+
+To add a language, add its table to `app/ui/i18n.js` (English text → your language, plus the patterns for sentences with names or numbers in them), list it in `languages`, and add a button for it in Settings.
 
 ## License
 

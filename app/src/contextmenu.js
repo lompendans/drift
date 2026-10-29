@@ -11,7 +11,7 @@ const Names = { google: "Google", bing: "Bing", duckduckgo: "DuckDuckGo", brave:
 
 function entriesFor(t, p) {
   const wc = t.wc, list = [], line = () => { if (list.length && !list[list.length - 1].line) list.push({ line: true }); };
-  const item = (text, icon, run, extra) => list.push(Object.assign({ text, icon, run }, extra));
+  const item = (text, icon, run, extra) => list.push(Object.assign({ text: D.t(text), icon, run }, extra));
   const f = p.editFlags || {};
 
   // spelling suggestions first, like other browsers
@@ -93,7 +93,7 @@ async function saveAs(t, url) {
 async function savePage(t) {
   const wc = t.wc;
   const name = (wc.getTitle() || "page").replace(/[\\/:*?"<>|]/g, "_").slice(0, 120) + ".html";
-  const r = await dialog.showSaveDialog(D.win, { defaultPath: path.join(app.getPath("downloads"), name), filters: [{ name: "Web page, complete", extensions: ["html", "htm"] }] });
+  const r = await dialog.showSaveDialog(D.win, { defaultPath: path.join(app.getPath("downloads"), name), filters: [{ name: D.t("Web page, complete"), extensions: ["html", "htm"] }] });
   if (r.canceled || !r.filePath) return;
   try { await wc.savePage(r.filePath, "HTMLComplete"); } catch { }
 }

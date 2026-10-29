@@ -34,11 +34,11 @@ object DriftDialog {
         val muted = if (dark) Color.rgb(162, 166, 173) else Color.rgb(100, 106, 116)
         val pop = if (dark) Color.rgb(34, 35, 39) else Color.WHITE
         val soft = if (dark) Color.argb(18, 255, 255, 255) else Color.argb(15, 15, 23, 42)
-        val accent = if (dark) Color.rgb(53, 201, 177) else Color.rgb(13, 154, 135)
+        val accent = Look.accentColor(dark)
         fun round(color: Int, r: Int, stroke: Int = 0) = GradientDrawable().apply { setColor(color); cornerRadius = dp(r).toFloat(); if (stroke != 0) setStroke(dp(1), stroke) }
 
-        val title = when (kind) { "leave" -> "Leave site?"; else -> "${host.ifEmpty { "This page" }} says" }
-        val body = if (kind == "leave") "Changes you made may not be saved." else message
+        val title = when (kind) { "leave" -> Look.t("Leave site?"); else -> Look.says(host.ifEmpty { Look.t("This page") }) }
+        val body = if (kind == "leave") Look.t("Changes you made may not be saved.") else message
 
         val dialog = Dialog(activity)
         var answered = false
@@ -79,8 +79,8 @@ object DriftDialog {
             minWidth = dp(76); minimumHeight = dp(42); setPadding(dp(18), 0, dp(18), 0)
             setOnClickListener { onClick() }
         }
-        if (kind != "alert") row.addView(button(if (kind == "leave") "Stay" else "Cancel", false) { finish(false, null) }, LinearLayout.LayoutParams(-2, dp(42)))
-        row.addView(button(if (kind == "leave") "Leave" else "OK", true) { finish(true, input?.text?.toString()) },
+        if (kind != "alert") row.addView(button(Look.t(if (kind == "leave") "Stay" else "Cancel"), false) { finish(false, null) }, LinearLayout.LayoutParams(-2, dp(42)))
+        row.addView(button(Look.t(if (kind == "leave") "Leave" else "OK"), true) { finish(true, input?.text?.toString()) },
             LinearLayout.LayoutParams(-2, dp(42)).apply { marginStart = dp(8) })
         box.addView(row, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(20) })
 

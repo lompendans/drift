@@ -122,6 +122,8 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)   // chrome://inspect, for development builds only
         store = Store.load(File(filesDir, "state.json"))
+        Look.setLanguage(store.language)
+        Look.accent = store.accent
         applyTheme()
         WindowCompat.setDecorFitsSystemWindows(window, false)
         if (Build.VERSION.SDK_INT >= 30) window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
@@ -215,7 +217,7 @@ class MainActivity : Activity() {
 
     private fun restoreSession() {
         for (s in store.session) tabs.add(Tab(++nextTab, s.url, s.title ?: displayUrl(s.url), s.favicon))
-        if (tabs.isEmpty()) tabs.add(Tab(++nextTab, NEW_TAB, "New Tab", null))
+        if (tabs.isEmpty()) tabs.add(Tab(++nextTab, NEW_TAB, Look.t("New Tab"), null))
         recent.addAll(tabs)
         activate(tabs[store.activeIndex.coerceIn(0, tabs.size - 1)])
     }
@@ -265,7 +267,7 @@ class MainActivity : Activity() {
     // ---------------- tabs ----------------
 
     private fun newTab(url: String?, after: Tab?, opener: Tab?, activate: Boolean = true): Tab {
-        val t = Tab(++nextTab, url ?: NEW_TAB, if (url == null) "New Tab" else displayUrl(url), null)
+        val t = Tab(++nextTab, url ?: NEW_TAB, if (url == null) Look.t("New Tab") else displayUrl(url), null)
         t.opener = opener
         tabs.add(if (after != null && after in tabs) tabs.indexOf(after) + 1 else tabs.size, t)
         if (activate) activate(t) else sendTabs()
@@ -421,7 +423,17 @@ class MainActivity : Activity() {
     }
 
     private fun sendSettings() = send(JSONObject().put("type", "settings").put("engine", store.searchEngine).put("theme", store.theme)
-        .put("adblock", if (store.adblockEnabled) "on" else "off").put("version", BuildConfig.VERSION_NAME).put("themeChoice", Build.VERSION.SDK_INT >= 31))
+        .put("adblock", if (store.adblockEnabled) "on" else "off").put("version", BuildConfig.VERSION_NAME).put("themeChoice", Build.VERSION.SDK_INT >= 31)
+        .put("lang", store.language).put("accent", store.accent).put("startClock", if (store.startClock) "on" else "off")
+        .put("startShortcuts", if (store.startShortcuts) "on" else "off").put("startBg", store.startBackground).put("customShortcuts", store.shortcuts != null))
+
+    private fun startDto() = JSONObject().put("type", "topSites").put("sites", store.startShortcutList()).put("custom", store.shortcuts != null)
+        .put("engine", store.searchEngine).put("accent", store.accent).put("clock", store.startClock).put("shortcuts", store.startShortcuts).put("background", store.startBackground)
+
+    /** Drift's own pages (the start page, the warning) load again, to show a new language or look. */
+    private fun reloadDriftPages(onlyStart: Boolean) {
+        for (t in tabs) if (t.view != null && (if (onlyStart) isNewTab(t.url) else t.url.startsWith("https://$HOST/"))) t.view?.reload()
+    }
 
     // a web page (Drift's own pages at drift.local don't count)
     private fun isWeb(url: String?) = url != null && (url.startsWith("http://") || url.startsWith("https://")) && !url.startsWith("https://$HOST/")
@@ -486,6 +498,7 @@ class MainActivity : Activity() {
             "applyUpdate" -> updater.apply()
             "openDownloadPage" -> newTab("https://lompendans.github.io/drift/", a, null)
             "getPermissions" -> sendPermissions()
+            "languageChanged" -> { reloadDriftPages(onlyStart = false); if (m.optBoolean("ui")) ui.reload() }
             "permSet" -> { store.setPermission(str("origin") ?: return, str("kind") ?: return, str("state")); queueSave(); sendPermissions() }
             "setting" -> {
                 val value = str("value")
@@ -493,7 +506,14 @@ class MainActivity : Activity() {
                     "engine" -> if (value != null && value in Store.engines) store.searchEngine = value
                     "adblock" -> if (value == "on" || value == "off") { store.adblockEnabled = value == "on"; a?.view?.reload() }
                     "theme" -> if (value in setOf("system", "light", "dark")) { store.theme = value!!; saveState(); applyTheme() }
+                    "lang" -> if (value in setOf("system", "en", "tr")) { store.language = value!!; Look.setLanguage(value) }
+                    "accent" -> if (value in Look.accentNames) { store.accent = value!!; Look.accent = value }
+                    "startClock" -> store.startClock = value == "on"
+                    "startShortcuts" -> store.startShortcuts = value == "on"
+                    "startBg" -> if (value == "glow" || value == "plain") store.startBackground = value
+                    "shortcuts" -> if (value == "reset") store.shortcuts = null
                 }
+                if (str("key") in setOf("accent", "startClock", "startShortcuts", "startBg", "shortcuts", "engine")) reloadDriftPages(onlyStart = true)
                 queueSave(); sendSettings(); sendShield()
             }
         }
@@ -607,7 +627,16 @@ class MainActivity : Activity() {
             else -> {
                 if (origin != "https://$HOST") return   // the rest is only for Drift's own pages
                 when (m.optString("type")) {
-                    "hello" -> proxy.postMessage(JSONObject().put("type", "topSites").put("sites", store.topSites(8)).put("engine", store.searchEngine).toString())
+                    "hello" -> proxy.postMessage(startDto().toString())
+                    "setShortcuts" -> m.optJSONArray("items")?.let { a ->
+                        // web addresses only, at most 12
+                        store.shortcuts = (0 until minOf(a.length(), 12)).mapNotNull { i ->
+                            val it = a.optJSONObject(i) ?: return@mapNotNull null
+                            val url = resolve(it.optString("url").trim())?.takeIf { u -> isWeb(u) && !u.startsWith(store.searchUrl) } ?: return@mapNotNull null
+                            Shortcut(it.optString("name").trim().take(60), url)
+                        }.toMutableList()
+                        queueSave(); sendSettings()
+                    }
                     "go" -> resolve(m.optString("input"))?.let { navigate(t, it) }
                     "palette" -> send(JSONObject().put("type", "palette").put("mode", "current"))
                     "proceed" -> m.optString("url").takeIf { isWeb(it) }?.let { t.proceedUrl = it; navigate(t, it) }
@@ -776,7 +805,7 @@ class MainActivity : Activity() {
             t.committed = true
             if (t.error == null) {
                 if (isWeb(url)) store.addHistory(url, view.title, t.favicon)
-                t.title = if (isNewTab(url)) "New Tab" else view.title?.takeIf { it.isNotBlank() && it != url } ?: displayUrl(url)
+                t.title = if (isNewTab(url)) Look.t("New Tab") else view.title?.takeIf { it.isNotBlank() && it != url } ?: displayUrl(url)
             }
             tabChanged(t)
             queueSave()
@@ -823,7 +852,7 @@ class MainActivity : Activity() {
 
         override fun onReceivedTitle(view: WebView, title: String?) {
             if (t.error != null) return
-            t.title = if (isNewTab(view.url)) "New Tab" else title?.takeIf { it.isNotBlank() } ?: displayUrl(view.url)
+            t.title = if (isNewTab(view.url)) Look.t("New Tab") else title?.takeIf { it.isNotBlank() } ?: displayUrl(view.url)
             tabChanged(t)
         }
 
@@ -1073,7 +1102,7 @@ class MainActivity : Activity() {
         if (Build.VERSION.SDK_INT < 33) toast("Copied")
     }
 
-    private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
+    private fun toast(s: String) = Toast.makeText(this, Look.t(s), Toast.LENGTH_SHORT).show()
 
     private fun toggleBookmark() {
         val t = active ?: return

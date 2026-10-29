@@ -62,7 +62,7 @@ D.installFromStore = async text => {
 };
 
 D.loadUnpacked = async () => {
-  const r = await dialog.showOpenDialog(D.win, { title: "Choose the folder that contains the extension's manifest.json", properties: ["openDirectory"] });
+  const r = await dialog.showOpenDialog(D.win, { title: D.t("Choose the folder that contains the extension's manifest.json"), properties: ["openDirectory"] });
   if (r.canceled || !r.filePaths[0]) return;
   const dir = r.filePaths[0];
   if (!fs.existsSync(path.join(dir, "manifest.json"))) { status("error", "That folder has no manifest.json, so it isn't an extension."); return; }

@@ -51,6 +51,21 @@ android {
     buildFeatures { buildConfig = true }
 }
 
+// The start page, the blocked-page warning and the translations are desktop Drift's own files (in ../../app);
+// each build copies them in, pointing their script at the path drift.local serves it from.
+val sharedPages = tasks.register("sharedPages") {
+    val app = file("../../app")
+    val assets = file("src/main/assets")
+    inputs.files(app.resolve("ui/i18n.js"), app.resolve("pages/newtab.html"), app.resolve("pages/blocked.html"))
+    outputs.files(assets.resolve("ui/i18n.js"), assets.resolve("pages/newtab.html"), assets.resolve("pages/blocked.html"))
+    doLast {
+        app.resolve("ui/i18n.js").copyTo(assets.resolve("ui/i18n.js"), overwrite = true)
+        for (name in listOf("newtab.html", "blocked.html"))
+            assets.resolve("pages/$name").writeText(app.resolve("pages/$name").readText().replace("drift://ui/i18n.js", "/ui/i18n.js"))
+    }
+}
+tasks.named("preBuild") { dependsOn(sharedPages) }
+
 dependencies {
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("androidx.core:core:1.16.0")

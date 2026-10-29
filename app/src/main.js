@@ -27,6 +27,7 @@ const { T, site: siteOf } = require("./filters");
 const { Downloads } = require("./downloads");
 const { Updater, DownloadPage } = require("./updater");
 const popups = require("./popups");
+const i18n = require("../ui/i18n");
 
 const NewTabUrl = "drift://newtab/";
 const isNewTab = u => !!u && u.startsWith("drift://newtab");
@@ -53,6 +54,12 @@ const D = {
 };
 D.downloads = new Downloads(D.store);
 module.exports = D;
+
+// The language Drift shows: the user's choice, or the computer's when it's one Drift speaks
+const langOf = s => i18n.languages.includes(s.Language) ? s.Language : app.getLocale().toLowerCase().startsWith("tr") ? "tr" : "en";
+let L = i18n.make("en");
+D.t = (s, vars) => L.T(s, vars);
+D.lang = () => L.lang;
 
 let nextTabId = 0;
 class Tab {
@@ -144,8 +151,8 @@ function createWindow() {
     const n = D.downloads.activeCount;
     if (n > 0 && !D.quitting) {
       const r = dialog.showMessageBoxSync(win, {
-        type: "warning", buttons: ["Close Drift", "Keep downloading"], defaultId: 1, cancelId: 1, title: "Drift", noLink: true,
-        message: n === 1 ? "A download is still in progress. Close Drift and cancel it?" : `${n} downloads are still in progress. Close Drift and cancel them?`,
+        type: "warning", buttons: [D.t("Close Drift"), D.t("Keep downloading")], defaultId: 1, cancelId: 1, title: "Drift", noLink: true,
+        message: D.t(n === 1 ? "A download is still in progress. Close Drift and cancel it?" : `${n} downloads are still in progress. Close Drift and cancel them?`),
       });
       if (r !== 0) { e.preventDefault(); return; }
     }
@@ -203,11 +210,11 @@ function restoreSession() {
     if (u.startsWith("https://drift.local/blocked.html")) return u.replace("https://drift.local/blocked.html", "drift://blocked/");
     return u;
   };
-  for (const st of D.store.Session || []) {
+  for (const st of D.store.StartupMode === "home" ? [] : D.store.Session || []) {
     const url = migrate(st.Url);
     if (url) D.tabs.push(new Tab(url, st.Title && st.Title.trim() ? st.Title : displayUrl(url), st.Favicon));
   }
-  if (!D.tabs.length) D.tabs.push(new Tab(NewTabUrl));
+  if (!D.tabs.length) D.tabs.push(new Tab(D.store.HomePage || NewTabUrl, D.store.HomePage ? displayUrl(D.store.HomePage) : D.t("New Tab")));
   D.recent.push(...D.tabs);
   activate(D.tabs[Math.max(0, Math.min(D.store.ActiveIndex || 0, D.tabs.length - 1))]);
   // links Drift was started with (from another app, or "Open with")
@@ -218,7 +225,7 @@ function restoreSession() {
 // ---------------- tabs ----------------
 
 function newTab(url, after, activateIt = true) {
-  const t = new Tab(url || NewTabUrl, url ? displayUrl(url) : "New Tab");
+  const t = new Tab(url || NewTabUrl, url ? displayUrl(url) : D.t("New Tab"));
   D.tabs.splice(after && D.tabs.includes(after) ? D.tabs.indexOf(after) + 1 : D.tabs.length, 0, t);
   if (activateIt) activate(t); else sendTabs();
   queueSave();
@@ -289,7 +296,7 @@ function wire(t) {
   });
   wc.on("did-navigate-in-page", (_, url, isMain) => { if (isMain) { t.url = url; tabChanged(t); } });
   wc.on("page-title-updated", (_, title) => {
-    t.title = isNewTab(wc.getURL()) ? "New Tab" : title && title.trim() ? title : displayUrl(wc.getURL());
+    t.title = isNewTab(wc.getURL()) ? D.t("New Tab") : title && title.trim() ? title : displayUrl(wc.getURL());
     if (t === D.active && D.win) D.win.setTitle(t.title + " - Drift");
     tabChanged(t);
   });
@@ -475,10 +482,50 @@ function sendNav() {
 }
 D.sendNav = sendNav;
 
+const onOff = v => v ? "on" : "off";
 function sendSettings() {
   const s = D.store;
   send({ type: "settings", engine: s.SearchEngine, theme: s.Theme, sidebarCollapsed: !!s.SidebarCollapsed, home: s.HomePage || "",
-    adblock: s.AdblockEnabled ? "on" : "off", version: process.versions.chrome, drift: app.getVersion() });
+    adblock: onOff(s.AdblockEnabled), version: process.versions.chrome, drift: app.getVersion(),
+    lang: s.Language || "system", accent: s.Accent, density: s.Density, homeButton: onOff(s.ShowHomeButton), startup: s.StartupMode,
+    startClock: onOff(s.StartClock), startShortcuts: onOff(s.StartShortcuts), startBg: s.StartBackground, customShortcuts: Array.isArray(s.Shortcuts) });
+}
+
+// ---------------- start page ----------------
+
+const startDto = () => {
+  const s = D.store;
+  return { type: "topSites", sites: s.shortcuts(), custom: Array.isArray(s.Shortcuts), engine: s.SearchEngine,
+    accent: s.Accent, clock: s.StartClock, shortcuts: s.StartShortcuts, background: s.StartBackground };
+};
+function sendStart() {
+  for (const t of D.tabs) if (t.wc && !t.wc.isDestroyed() && isNewTab(t.wc.getURL())) t.wc.send("page", startDto());
+}
+
+/** Keeps a list the start page sent: web addresses only, at most 12, names trimmed. */
+function cleanShortcuts(items) {
+  if (!Array.isArray(items)) return null;
+  const out = [];
+  for (const it of items.slice(0, 12)) {
+    if (!it || typeof it.url !== "string") continue;
+    const url = resolve(it.url.trim());
+    if (!url || !/^https?:\/\//.test(url) || url.startsWith(D.store.searchUrl)) continue;
+    out.push({ Name: typeof it.name === "string" ? it.name.trim().slice(0, 60) : "", Url: url });
+  }
+  return out;
+}
+
+/** After the language changes: everything Drift draws itself loads again in the new language. */
+function relanguage() {
+  const next = langOf(D.store);
+  if (next === L.lang) return false;
+  L = i18n.make(next);
+  for (const t of D.tabs) if (t.wc && !t.wc.isDestroyed() && t.wc.getURL().startsWith("drift://")) t.wc.reload();
+  // the page shows again so Settings can reopen over a fresh picture of it
+  if (D.active && D.active.view) D.active.view.setVisible(true);
+  D.overlayOpen = false;
+  if (D.ui && !D.ui.isDestroyed()) { D.uiReady = false; D.reopenSettings = true; D.ui.reload(); }
+  return true;
 }
 
 const sendPalette = mode => send({ type: "palette", mode });
@@ -502,6 +549,7 @@ function onUiMessage(m) {
       D.uiReady = true;
       sendSettings(); D.sendWindowState(); sendDownloads(); send(D.updater.dto()); D.sendExtensions();
       if (!D.tabs.length) restoreSession(); else { sendTabs(); sendNav(); }
+      if (D.reopenSettings) { D.reopenSettings = false; sendPalette("settings"); }
       break;
     case "rect": D.card = { x: int("x"), y: int("y"), w: int("w"), h: int("h"), r: int("r") }; layout(); break;
     case "colors":
@@ -615,8 +663,18 @@ function onUiMessage(m) {
       }
       if (key === "adblock" && (value === "on" || value === "off")) { s.AdblockEnabled = value === "on"; applyBlockingChange(); }
       if (key === "theme" && ["system", "light", "dark"].includes(value)) { s.Theme = value; nativeTheme.themeSource = value; }
+      if (key === "accent" && ["teal", "blue", "purple", "pink", "orange", "graphite"].includes(value)) s.Accent = value;
+      if (key === "density" && ["comfortable", "compact"].includes(value)) s.Density = value;
+      if (key === "homeButton") s.ShowHomeButton = value === "on";
+      if (key === "startup" && ["restore", "home"].includes(value)) s.StartupMode = value;
+      if (key === "startClock") s.StartClock = value === "on";
+      if (key === "startShortcuts") s.StartShortcuts = value === "on";
+      if (key === "startBg" && ["glow", "plain"].includes(value)) s.StartBackground = value;
+      if (key === "shortcuts" && value === "reset") s.Shortcuts = null;
       queueSave();
+      if (key === "lang" && ["system", ...i18n.languages].includes(value)) { s.Language = value; if (relanguage()) break; }
       sendSettings();
+      if (["accent", "startClock", "startShortcuts", "startBg", "shortcuts", "engine"].includes(key)) sendStart();
       break;
     }
   }
@@ -651,7 +709,11 @@ ipcMain.on("page", (e, m) => {
   const source = e.senderFrame ? e.senderFrame.url : "";
   if (m.type === "drift-hide") { answerHideRequest(t, m, source, e.senderFrame); return; }
   if (!source.startsWith("drift://")) return;
-  if (m.type === "hello") e.sender.send("page", { type: "topSites", sites: D.store.topSites(8), engine: D.store.SearchEngine });
+  if (m.type === "hello") e.sender.send("page", startDto());
+  else if (m.type === "setShortcuts") {
+    const list = cleanShortcuts(m.items);
+    if (list) { D.store.Shortcuts = list; queueSave(); sendStart(); sendSettings(); }
+  }
   else if (m.type === "go" && typeof m.input === "string") { const url = resolve(m.input); if (url) navigate(t, url); }
   else if (m.type === "palette") sendPalette("current");
   else if (m.type === "proceed" && typeof m.url === "string" && /^https?:\/\//.test(m.url)) {
@@ -979,6 +1041,7 @@ app.on("before-quit", () => { D.quitting = true; });
 app.on("will-quit", () => { saveState(); D.updater.apply(false); });
 
 app.whenReady().then(() => {
+  L = i18n.make(langOf(D.store));
   nativeTheme.themeSource = ["light", "dark"].includes(D.store.Theme) ? D.store.Theme : "system";
   const ses = session.defaultSession;
   const ua = `Mozilla/5.0 (${uaPlatform()}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome.split(".")[0]}.0.0.0 Safari/537.36 Drift/${app.getVersion()}`;
@@ -1015,5 +1078,12 @@ function serveDrift(req) {
   const base = path.join(Root, map[0]);
   const file = path.normalize(path.join(base, decodeURIComponent(map[1])));
   if (!file.startsWith(base + path.sep)) return new Response("Not found", { status: 404 });
+  // pages are written in English; <html lang> tells ui/i18n.js which language to show
+  if (file.endsWith(".html")) {
+    try {
+      const html = fs.readFileSync(file, "utf8").replace('<html lang="en">', `<html lang="${L.lang}">`);
+      return new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });
+    } catch { return new Response("Not found", { status: 404 }); }
+  }
   return net.fetch(pathToFileURL(file).toString());
 }

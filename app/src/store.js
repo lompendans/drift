@@ -33,6 +33,15 @@ const defaults = () => ({
   Extensions: [],
   ExternalAllowed: [],
   Permissions: [],          // [{ Origin, Kind, State }]: allow / block answers the user chose to keep
+  Language: "system",       // system, en, tr
+  Accent: "teal",
+  Density: "comfortable",   // comfortable, compact: height of the tab list's rows
+  ShowHomeButton: true,
+  StartupMode: "restore",   // restore: reopen last time's tabs; home: start with the home page
+  StartClock: true,
+  StartShortcuts: true,
+  StartBackground: "glow",  // glow, plain
+  Shortcuts: null,          // [{ Name, Url }] once the user edits the start page's shortcuts; null shows the most visited sites
 });
 
 const folder = () => app.getPath("userData");
@@ -111,6 +120,16 @@ class Store {
   suggestions() {
     return [...this.History].sort((a, b) => new Date(b.Last) - new Date(a.Last)).slice(0, 600)
       .map(h => ({ url: h.Url, title: h.Title, favicon: h.Favicon, score: Math.round(score(h) * 1000) / 1000 }));
+  }
+
+  /** The start page's shortcuts: the user's own list, or the most visited sites. */
+  shortcuts() {
+    if (!Array.isArray(this.Shortcuts)) return this.topSites(8);
+    return this.Shortcuts.map(s => {
+      let host = ""; try { host = new URL(s.Url).host; } catch { }
+      const seen = host && this.History.find(h => h.Favicon && h.Url.includes("//" + host + "/"));
+      return { url: s.Url, name: s.Name || host.replace(/^www\./, ""), favicon: seen ? seen.Favicon : null };
+    });
   }
 
   topSites(n) {

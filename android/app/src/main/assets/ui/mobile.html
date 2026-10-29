@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Drift</title>
+<script src="/ui/i18n.js"></script>
 <style>
 /* Drift for Android. Normally only the bar at the bottom is showing (this page sits over just that strip); when a
    panel opens, the page covers the screen over a blurred picture of the web page, like desktop Drift's palette. */
@@ -124,6 +125,9 @@ body.panel #scrim { opacity: 1; pointer-events: auto; }
 .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: transform 0.2s var(--ease); }
 .toggle.on { background: var(--accent); }
 .toggle.on::after { transform: translateX(18px); }
+.swatches { display: flex; flex-wrap: wrap; gap: 14px; padding: 6px 12px 12px; }
+.swatches button { width: 34px; height: 34px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px var(--pop), 0 0 0 5px transparent; transition: box-shadow 0.18s var(--ease); }
+.swatches button.on { box-shadow: 0 0 0 3px var(--pop), 0 0 0 5px var(--c); }
 .radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--faint); flex: none; }
 .radio.on { border: 6px solid var(--accent); }
 .search { margin: 0 12px 8px; height: 42px; border-radius: 12px; background: var(--hover); display: flex; align-items: center; gap: 8px; padding: 0 12px; }
@@ -281,7 +285,7 @@ body.panel #scrim { opacity: 1; pointer-events: auto; }
     <button class="ib" id="backBtn" aria-label="Back"><svg class="i"><use href="#i-back"/></svg></button>
     <button id="addr" aria-label="Search or type address">
       <svg class="lock i"><use id="addrIcon" href="#i-search"/></svg>
-      <span class="host ph" id="addrText">Search or type address</span>
+      <span class="host ph" id="addrText" translate="no">Search or type address</span>
       <span id="shieldBtn" role="button" aria-label="Ad blocker" hidden><svg class="i"><use id="shieldIcon" href="#i-shield"/></svg><span id="shieldCount"></span></span>
     </button>
     <button class="ib" id="tabsBtn" aria-label="Tabs"><span class="count" id="tabCount">1</span></button>
@@ -352,12 +356,21 @@ body.panel #scrim { opacity: 1; pointer-events: auto; }
   <div class="grab"></div>
   <div class="head"><h2>Settings</h2></div>
   <div class="body">
+    <div class="label">Language</div>
+    <div id="langs"></div>
     <div class="label">Search with</div>
     <div id="engines"></div>
     <div id="themeBox">
       <div class="label">Appearance</div>
       <div id="themes"></div>
     </div>
+    <div class="label">Accent color</div>
+    <div class="swatches" id="swatches"></div>
+    <div class="label">Start page</div>
+    <button class="row" id="sClock"><span class="t"><b>Show the clock</b></span><span class="toggle" id="sClockT"></span></button>
+    <button class="row" id="sShortcuts"><span class="t"><b>Show shortcuts</b><span>Tap ⋮ on a shortcut on the start page to edit it.</span></span><span class="toggle" id="sShortcutsT"></span></button>
+    <button class="row" id="sPlain"><span class="t"><b>Soft glow</b></span><span class="toggle" id="sPlainT"></span></button>
+    <button class="row" id="sReset" hidden><span class="t"><b>Reset shortcuts to most visited</b></span></button>
     <div class="label">Ad blocker</div>
     <button class="row" id="sAdblock"><svg class="i"><use href="#i-shield"/></svg><span class="t"><b>Block ads and trackers</b><span id="sAdblockSub"></span></span><span class="toggle" id="sAdblockT"></span></button>
     <button class="row" id="sLists"><svg class="i"><use href="#i-reload"/></svg><span class="t"><b>Update filter lists</b><span id="sListsSub"></span></span></button>
@@ -383,7 +396,7 @@ body.panel #scrim { opacity: 1; pointer-events: auto; }
 <!-- long-press on a link or image -->
 <div class="sheet" id="link">
   <div class="grab"></div>
-  <div class="head"><span class="sub" id="linkUrl" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1"></span></div>
+  <div class="head"><span class="sub" id="linkUrl" translate="no" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1"></span></div>
   <div class="body" id="linkBody"></div>
 </div>
 
@@ -391,7 +404,7 @@ body.panel #scrim { opacity: 1; pointer-events: auto; }
 <div id="dlg" role="alertdialog">
   <h2 id="dTitle"></h2>
   <p class="dsub" id="dSub" hidden></p>
-  <div class="dmsg" id="dMsg"></div>
+  <div class="dmsg" id="dMsg" translate="no"></div>
   <div class="dfields" id="dFields" hidden>
     <input id="dText" autocomplete="off" spellcheck="false">
     <input id="dUser" autocomplete="username" placeholder="User name" autocapitalize="off">
@@ -478,7 +491,7 @@ function renderNav() {
   $("#backBtn").disabled = !nav.canBack;
   const t = $("#addrText");
   const page = nav.url && !nav.error;
-  t.textContent = nav.url ? (nav.host || nav.url) : "Search or type address";
+  t.textContent = nav.url ? (nav.host || nav.url) : T("Search or type address");
   t.classList.toggle("ph", !nav.url);
   $("#addrIcon").setAttribute("href", !nav.url ? "#i-search" : nav.secure ? "#i-lock" : "#i-globe");
   $("#tabCount").textContent = Math.min(nav.tabCount || 1, 99);
@@ -514,9 +527,9 @@ function renderPrompt() {
   const p = nav.prompt, box = $("#prompt");
   box.hidden = !p;
   if (!p) return;
-  const kinds = p.kinds.map(k => permName[k] || k);
-  const what = kinds.length === 2 && p.kinds.includes("camera") && p.kinds.includes("microphone") ? "use your camera and microphone" : kinds.join(" and ");
-  $("#promptText").innerHTML = `<b>${esc(p.host)}</b> wants to ${esc(what)}`;
+  const kinds = p.kinds.map(k => T(permName[k] || k));
+  const what = kinds.length === 2 && p.kinds.includes("camera") && p.kinds.includes("microphone") ? T("use your camera and microphone") : kinds.join(" " + T("and") + " ");
+  $("#promptText").innerHTML = LANG === "tr" ? `<b translate="no">${esc(p.host)}</b> ${esc(what)} istiyor` : `<b translate="no">${esc(p.host)}</b> wants to ${esc(what)}`;
   $("#promptIcon").setAttribute("href", permIcon[p.kinds[0]] || "#i-globe");
   box.dataset.origin = p.origin;
 }
@@ -609,7 +622,7 @@ function renderPalette() {
   pal.items.forEach((it, n) => {
     const b = document.createElement("button");
     b.className = "row" + (n === 0 && raw ? " sel" : "");
-    b.innerHTML = `<span class="fav">${it.favicon ? `<img src="${esc(it.favicon)}" alt="">` : icon(it.icon || "i-globe")}</span><span class="t"><b>${esc(it.title)}</b><span>${esc(it.sub)}</span></span>${it.tag ? `<span class="tag">${esc(it.tag)}</span>` : ""}`;
+    b.innerHTML = `<span class="fav">${it.favicon ? `<img src="${esc(it.favicon)}" alt="">` : icon(it.icon || "i-globe")}</span><span class="t"><b translate="no">${esc(it.title)}</b><span>${esc(it.sub)}</span></span>${it.tag ? `<span class="tag">${esc(it.tag)}</span>` : ""}`;
     const img = b.querySelector("img"); if (img) img.onerror = () => { img.parentElement.innerHTML = icon("i-globe"); };
     b.onclick = () => choose(it);
     box.appendChild(b);
@@ -642,14 +655,14 @@ function openGrid() {
 }
 function renderGrid() {
   const list = (snapshot && snapshot.tabs) || tabs;
-  $("#gridTitle").textContent = list.length === 1 ? "1 tab" : `${list.length} tabs`;
+  $("#gridTitle").textContent = T(list.length === 1 ? "1 tab" : `${list.length} tabs`);
   const box = $("#gridList");
   box.innerHTML = "";
   list.forEach((t, n) => {
     const c = document.createElement("div");
     c.className = "gc" + (t.id === activeId ? " on" : "");
     c.style.transitionDelay = Math.min(n, 12) * 18 + "ms";
-    c.innerHTML = `<div class="gt">${t.favicon ? `<img src="${esc(t.favicon)}" alt="">` : `<svg class="gl i"><use href="#i-globe"/></svg>`}<span>${esc(t.title || t.host || "New Tab")}</span><button class="gx" aria-label="Close tab">${icon("i-x")}</button></div>
+    c.innerHTML = `<div class="gt">${t.favicon ? `<img src="${esc(t.favicon)}" alt="">` : `<svg class="gl i"><use href="#i-globe"/></svg>`}<span translate="no">${esc(t.title || t.host || T("New Tab"))}</span><button class="gx" aria-label="Close tab">${icon("i-x")}</button></div>
       <div class="shot">${t.thumb ? "" : icon(t.url ? "i-globe" : "i-search")}</div>`;
     if (t.thumb) c.querySelector(".shot").style.backgroundImage = `url("${t.thumb}")`;
     c.onclick = e => {
@@ -704,7 +717,7 @@ function openList(kind) {
   post({ type: kind === "bookmarks" ? "getBookmarks" : kind === "history" ? "getHistory" : "getDownloads" });
   switchTo("list");
 }
-const day = t => { const d = new Date(t), now = new Date(); const diff = Math.floor((new Date(now.toDateString()) - new Date(d.toDateString())) / 864e5); return diff === 0 ? "Today" : diff === 1 ? "Yesterday" : d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }); };
+const day = t => { const d = new Date(t), now = new Date(); const diff = Math.floor((new Date(now.toDateString()) - new Date(d.toDateString())) / 864e5); return diff === 0 ? T("Today") : diff === 1 ? T("Yesterday") : d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }); };
 const size = b => b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : b >= 1e6 ? (b / 1e6).toFixed(1) + " MB" : b >= 1e3 ? Math.round(b / 1e3) + " KB" : b + " B";
 function renderList() {
   const box = $("#listBody"), q = $("#listQ").value.trim().toLowerCase();
@@ -723,10 +736,10 @@ function renderList() {
     if (listKind === "downloads") {
       const pct = it.total ? Math.round(it.received * 100 / it.total) : 0;
       const sub = it.state === "done" ? `${size(it.total || it.received)} · ${esc(it.host)}` : it.state === "failed" ? "Failed" : it.state === "gone" ? "Removed" : it.state === "paused" ? "Waiting…" : it.total ? `${size(it.received)} of ${size(it.total)}` : `${size(it.received)}…`;
-      r.innerHTML = `<span class="fav">${icon("i-file")}</span><span class="t"><b>${esc(it.name)}</b><span>${sub}</span>${it.state === "progress" || it.state === "paused" ? `<span class="meter"><i style="width:${pct}%"></i></span>` : ""}</span><button class="x" aria-label="${it.state === "progress" ? "Cancel" : "Remove"}">${icon("i-x")}</button>`;
+      r.innerHTML = `<span class="fav">${icon("i-file")}</span><span class="t"><b translate="no">${esc(it.name)}</b><span>${sub}</span>${it.state === "progress" || it.state === "paused" ? `<span class="meter"><i style="width:${pct}%"></i></span>` : ""}</span><button class="x" aria-label="${it.state === "progress" ? "Cancel" : "Remove"}">${icon("i-x")}</button>`;
       r.onclick = e => post({ type: "download", action: e.target.closest(".x") ? (it.state === "progress" || it.state === "paused" ? "cancel" : "remove") : it.state === "done" ? "open" : it.state === "failed" ? "retry" : "folder", id: it.id });
     } else {
-      r.innerHTML = `<span class="fav">${it.favicon ? `<img src="${esc(it.favicon)}" alt="">` : icon("i-globe")}</span><span class="t"><b>${esc(it.title || it.url)}</b><span>${esc(it.url.replace(/^https?:\/\/(www\.)?/, ""))}</span></span><button class="x" aria-label="Delete">${icon("i-x")}</button>`;
+      r.innerHTML = `<span class="fav">${it.favicon ? `<img src="${esc(it.favicon)}" alt="">` : icon("i-globe")}</span><span class="t" translate="no"><b>${esc(it.title || it.url)}</b><span>${esc(it.url.replace(/^https?:\/\/(www\.)?/, ""))}</span></span><button class="x" aria-label="Delete">${icon("i-x")}</button>`;
       const img = r.querySelector("img"); if (img) img.onerror = () => { img.parentElement.innerHTML = icon("i-globe"); };
       r.onclick = e => {
         if (e.target.closest(".x")) {
@@ -754,7 +767,7 @@ function renderShieldDetails(m) {
   $("#shSiteText").textContent = `Block ads on ${m.site}`;
   $("#shSiteT").classList.toggle("on", m.state === "on");
   const max = Math.max(1, ...m.sites.map(s => s.count));
-  $("#shBars").innerHTML = m.sites.map(s => `<div class="bar"><i style="width:${Math.max(12, s.count * 100 / max)}%"></i><span>${esc(s.site)}</span><span>${s.count}</span></div>`).join("");
+  $("#shBars").innerHTML = m.sites.map(s => `<div class="bar"><i style="width:${Math.max(12, s.count * 100 / max)}%"></i><span translate="no">${esc(s.site)}</span><span>${s.count}</span></div>`).join("");
   $("#shFoot").textContent = `${m.total.toLocaleString()} blocked in total · ${m.rules.toLocaleString()} rules from ${m.lists} lists`;
 }
 $("#shSite").onclick = () => { const on = $("#shSiteT").classList.contains("on"); post({ type: "shieldAllow", allow: on }); closePanels(); };
@@ -767,7 +780,40 @@ function renderSettings() {
   $("#themes").innerHTML = [["system", "Same as phone"], ["light", "Light"], ["dark", "Dark"]].map(([k, v]) => `<button class="row" data-theme="${k}"><span class="radio${settings.theme === k ? " on" : ""}"></span><span class="t"><b>${v}</b></span></button>`).join("");
   document.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => post({ type: "setting", key: "theme", value: b.dataset.theme }));
   $("#sAdblockT").classList.toggle("on", settings.adblock === "on");
+  $("#langs").innerHTML = [["system", T("Same as phone")], ["en", "English"], ["tr", "Türkçe"]].map(([k, v]) => `<button class="row" data-lang="${k}"><span class="radio${(settings.lang || "system") === k ? " on" : ""}"></span><span class="t"><b translate="no">${v}</b></span></button>`).join("");
+  document.querySelectorAll("[data-lang]").forEach(b => b.onclick = () => post({ type: "setting", key: "lang", value: b.dataset.lang }));
+  const dark = darkQuery.matches;
+  $("#swatches").innerHTML = Object.keys(Accents).map(k => `<button data-accent="${k}" class="${settings.accent === k ? "on" : ""}" style="--c:${Accents[k][dark ? 1 : 0]}" aria-label="${k}"></button>`).join("");
+  document.querySelectorAll("[data-accent]").forEach(b => b.onclick = () => { settings.accent = b.dataset.accent; applyAccent(); renderSettings(); post({ type: "setting", key: "accent", value: b.dataset.accent }); });
+  $("#sClockT").classList.toggle("on", settings.startClock !== "off");
+  $("#sShortcutsT").classList.toggle("on", settings.startShortcuts !== "off");
+  $("#sPlainT").classList.toggle("on", settings.startBg !== "plain");
+  $("#sReset").hidden = !settings.customShortcuts;
 }
+// accent colors: [light theme, dark theme], the same as desktop Drift
+const Accents = { teal: ["#0d9a87", "#35c9b1"], blue: ["#2563eb", "#5b9cff"], purple: ["#7c3aed", "#a78bfa"], pink: ["#db2777", "#f472b6"], orange: ["#ea580c", "#fb923c"], graphite: ["#4b5563", "#a1a7b3"] };
+const darkQuery = matchMedia("(prefers-color-scheme: dark)");
+const alpha = (hex, a) => `rgba(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)}, ${a})`;
+function applyAccent() {
+  const dark = darkQuery.matches, c = (Accents[settings.accent] || Accents.teal)[dark ? 1 : 0];
+  document.documentElement.style.setProperty("--accent", c);
+  document.documentElement.style.setProperty("--accent-soft", alpha(c, dark ? 0.16 : 0.12));
+}
+darkQuery.addEventListener("change", () => { applyAccent(); renderSettings(); });
+/* the language lives in this origin's storage, where ui/i18n.js and the start page read it; a change reloads Drift's pages */
+function applyLanguage() {
+  const want = settings.lang || "system";
+  let had = null;
+  try { had = localStorage.getItem("drift-lang"); localStorage.setItem("drift-lang", want); } catch { return; }
+  const effective = v => (v && v !== "system" ? v : navigator.language || "en").slice(0, 2).toLowerCase() === "tr" ? "tr" : "en";
+  if (effective(want) !== LANG) post({ type: "languageChanged", ui: true });   // Drift reloads this page too
+  else if (had !== want && had !== null) post({ type: "languageChanged" });
+}
+const toggleSetting = (key, on, off) => () => post({ type: "setting", key, value: settings[key] === off ? on : off });
+$("#sClock").onclick = toggleSetting("startClock", "on", "off");
+$("#sShortcuts").onclick = toggleSetting("startShortcuts", "on", "off");
+$("#sPlain").onclick = toggleSetting("startBg", "glow", "plain");
+$("#sReset").onclick = () => { post({ type: "setting", key: "shortcuts", value: "reset" }); toast(T("Shortcuts reset")); };
 $("#sAdblock").onclick = () => post({ type: "setting", key: "adblock", value: settings.adblock === "on" ? "off" : "on" });
 $("#sLists").onclick = () => { post({ type: "filtersUpdate" }); toast("Updating filter lists…"); };
 $("#sPerms").onclick = () => { listKind = "perms"; post({ type: "getPermissions" }); $("#listTitle").textContent = "Site permissions"; $("#listSearch").hidden = true; $("#listClear").hidden = true; $("#listBody").innerHTML = ""; switchTo("list"); };
@@ -779,7 +825,7 @@ function renderPerms(m) {
   const name = { notifications: "Notifications", camera: "Camera", microphone: "Microphone", location: "Location", midi: "MIDI devices" };
   box.innerHTML = "";
   for (const s of m.sites) {
-    const l = document.createElement("div"); l.className = "label"; l.textContent = s.host; box.appendChild(l);
+    const l = document.createElement("div"); l.className = "label"; l.translate = false; l.textContent = s.host; box.appendChild(l);
     for (const it of s.items) {
       const r = document.createElement("div"); r.className = "row";
       r.innerHTML = `<span class="t"><b>${esc(name[it.kind] || it.kind)}</b><span>${it.state === "allow" ? "Allowed" : "Blocked"}</span></span><button class="btn">Reset</button>`;
@@ -885,7 +931,7 @@ function onMessage(m) {
     case "tabs": tabs = m.tabs; activeId = m.active; if (snapshot) snapshot.tabs = m.tabs; if (panel === "tabs") renderGrid(); break;
     case "tab": { const i = tabs.findIndex(t => t.id === m.tab.id); if (i >= 0) tabs[i] = m.tab; break; }
     case "nav": nav = m; renderNav(); break;
-    case "settings": settings = m; renderSettings(); break;
+    case "settings": settings = m; applyAccent(); renderSettings(); applyLanguage(); break;
     case "shield": shield = m; renderShield(); break;
     case "shieldDetails": renderShieldDetails(m); break;
     case "snapshot": onSnapshot(m); break;

@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Drift</title>
+<script src="i18n.js"></script>
 <style>
 /* Layout: vertical tab sidebar on the left; on the right a 44px top bar (navigation, address pill,
    window buttons) above a rounded "card" where the native page view sits. Overlays blur a snapshot of the card. */
@@ -230,8 +231,21 @@ body.overlay .panel.show { opacity: 1; visibility: visible; transform: translate
 .group { padding: 10px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: var(--faint); }
 .hint { display: flex; gap: 16px; padding: 10px 16px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12px; }
 
-#settings { width: min(460px, calc(100vw - 48px)); padding: 6px 0 4px; }
-#settings h2 { margin: 0; padding: 14px 20px 6px; font: 600 16px var(--display); }
+/* settings sit in the middle of the window and scroll inside when they don't fit */
+#settings { width: min(500px, calc(100vw - 48px)); top: 50%; max-height: min(88vh, 900px); display: flex; flex-direction: column; overflow: hidden; transform: translate(-50%, calc(-50% + 6px)) scale(0.98); }
+body.overlay #settings.show { transform: translate(-50%, -50%) scale(1); }
+.sthead { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 12px 10px 20px; border-bottom: 1px solid var(--line); }
+.sthead h2 { margin: 0; font: 600 16px var(--display); }
+.setbody { flex: 1; min-height: 0; overflow-y: auto; padding: 0 0 6px; scrollbar-width: thin; }
+.sethd { margin: 18px 20px 2px; font-size: 11px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: var(--faint); }
+.togrow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 9px 20px; }
+.togrow > span { min-width: 0; }
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; padding: 2px 2px 4px; }
+.swatches button { width: 26px; height: 26px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px var(--pop), 0 0 0 4px transparent; transition: box-shadow 0.18s var(--ease), transform 0.15s var(--ease); }
+.swatches button:hover { transform: scale(1.1); }
+.swatches button.on { box-shadow: 0 0 0 2px var(--pop), 0 0 0 4px var(--c); }
+#app.compact .tab-in { height: 30px; }
+#app.compact .new-tab { height: 32px; }
 .setrow { padding: 12px 20px; display: grid; gap: 8px; }
 .setrow > span { color: var(--muted); font-size: 12px; }
 .seg { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: var(--hover); position: relative; }
@@ -252,7 +266,7 @@ body.overlay .panel.show { opacity: 1; visibility: visible; transform: translate
 .setrow .note.ok { color: var(--accent); }
 .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; padding: 4px 20px 14px; font-size: 12px; color: var(--muted); }
 .keys kbd { font: 11px var(--ui); color: var(--fg); padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); justify-self: start; }
-.about { width: 100%; display: flex; justify-content: space-between; gap: 12px; padding: 12px 20px 14px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12px; text-align: left; transition: background 0.15s, color 0.15s; border-radius: 0 0 14px 14px; }
+.about { flex: none; width: 100%; display: flex; justify-content: space-between; gap: 12px; padding: 12px 20px 14px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12px; text-align: left; transition: background 0.15s, color 0.15s; border-radius: 0 0 14px 14px; }
 .about:hover { background: var(--hover); color: var(--muted); }
 .about .more { flex: none; color: var(--accent); }
 
@@ -921,7 +935,13 @@ body.switching #switcher.show { opacity: 1; visibility: visible; transform: tran
   </div>
   <div id="switcher" role="listbox" aria-label="Switch tabs"><div id="swCards"><div id="swRing"></div></div></div>
   <div class="panel" id="settings" role="dialog" aria-label="Settings">
-    <h2>Settings</h2>
+    <div class="sthead"><h2>Settings</h2><button class="icon-btn" id="setClose" type="button" title="Close"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="setbody">
+    <h3 class="sethd">General</h3>
+    <div class="setrow"><span>Language</span><div class="seg" data-key="lang">
+      <span class="thumb"></span>
+      <button data-v="system">System</button><button data-v="en" translate="no">English</button><button data-v="tr" translate="no">Türkçe</button>
+    </div></div>
     <div class="setrow"><span>Search engine</span><div class="seg" data-key="engine">
       <span class="thumb"></span>
       <button data-v="google">Google</button><button data-v="bing">Bing</button><button data-v="duckduckgo">DuckDuckGo</button><button data-v="brave">Brave</button>
@@ -936,6 +956,38 @@ body.switching #switcher.show { opacity: 1; visibility: visible; transform: tran
       </div>
       <span class="note" id="homeNote" hidden>Press Enter to save.</span>
     </div>
+    <div class="setrow"><span>On startup</span><div class="seg" data-key="startup">
+      <span class="thumb"></span>
+      <button data-v="restore">Reopen your tabs</button><button data-v="home">Open the home page</button>
+    </div></div>
+
+    <h3 class="sethd">Appearance</h3>
+    <div class="setrow"><span>Theme</span><div class="seg" data-key="theme">
+      <span class="thumb"></span>
+      <button data-v="system">System</button><button data-v="light">Light</button><button data-v="dark">Dark</button>
+    </div></div>
+    <div class="setrow"><span>Accent color</span><div class="swatches" data-key="accent">
+      <button data-v="teal" title="Teal"></button><button data-v="blue" title="Blue"></button><button data-v="purple" title="Purple"></button>
+      <button data-v="pink" title="Pink"></button><button data-v="orange" title="Orange"></button><button data-v="graphite" title="Graphite"></button>
+    </div></div>
+    <div class="setrow"><span>Tab list</span><div class="seg" data-key="density">
+      <span class="thumb"></span>
+      <button data-v="comfortable">Comfortable</button><button data-v="compact">Compact</button>
+    </div></div>
+    <div class="togrow"><span>Show the Home button</span><button class="switch" data-key="homeButton" role="switch" aria-checked="true" type="button"><span></span></button></div>
+
+    <h3 class="sethd">Start page</h3>
+    <div class="togrow"><span>Show the clock</span><button class="switch" data-key="startClock" role="switch" aria-checked="true" type="button"><span></span></button></div>
+    <div class="togrow"><span>Show shortcuts</span><button class="switch" data-key="startShortcuts" role="switch" aria-checked="true" type="button"><span></span></button></div>
+    <div class="setrow"><span>Background</span><div class="seg" data-key="startBg">
+      <span class="thumb"></span>
+      <button data-v="glow">Soft glow</button><button data-v="plain">Plain</button>
+    </div>
+      <span class="note" id="scNote">Hover a shortcut on the start page to edit it.</span>
+      <button class="linkish" id="scReset" type="button" hidden>Reset shortcuts to most visited &rsaquo;</button>
+    </div>
+
+    <h3 class="sethd">Privacy and data</h3>
     <div class="setrow"><span>Ad blocker</span><div class="seg" data-key="adblock">
       <span class="thumb"></span>
       <button data-v="on">Block ads and trackers</button><button data-v="off">Off</button>
@@ -943,11 +995,7 @@ body.switching #switcher.show { opacity: 1; visibility: visible; transform: tran
     <div class="setrow"><span>Extensions</span><button class="linkish" id="openExt" type="button">Manage extensions &rsaquo;</button></div>
     <div class="setrow"><span>Your data</span><button class="linkish" id="openImport" type="button">Import bookmarks and history &rsaquo;</button></div>
     <div class="setrow"><span>Privacy</span><button class="linkish" id="openPerms" type="button">Site permissions &rsaquo;</button></div>
-    <div class="setrow"><span>Appearance</span><div class="seg" data-key="theme">
-      <span class="thumb"></span>
-      <button data-v="system">System</button><button data-v="light">Light</button><button data-v="dark">Dark</button>
-    </div></div>
-    <div class="setrow"><span>Keyboard shortcuts</span></div>
+    <h3 class="sethd">Keyboard shortcuts</h3>
     <div class="keys">
       <kbd>Ctrl T</kbd><span>New tab</span>
       <kbd>Ctrl L</kbd><span>Search or enter address</span>
@@ -963,6 +1011,7 @@ body.switching #switcher.show { opacity: 1; visibility: visible; transform: tran
       <kbd>Ctrl B</kbd><span>Collapse or expand the sidebar</span>
       <kbd>F11</kbd><span>Full screen</span>
     </div>
+    </div>
     <button class="about" id="aboutLink" type="button"><span id="aboutLine">Drift</span><span class="more">About Drift &rsaquo;</span></button>
   </div>
 </div>
@@ -973,7 +1022,7 @@ const $ = s => document.querySelector(s);
 const post = m => window.driftHost && driftHost.postMessage(m);
 const engines = { google: "Google", bing: "Bing", duckduckgo: "DuckDuckGo", brave: "Brave Search" };
 
-let tabs = [], activeId = 0, nav = {}, settings = { engine: "google", theme: "system", home: "", homeMode: "start" };
+let tabs = [], activeId = 0, nav = {}, settings = { engine: "google", theme: "system", home: "", homeMode: "start", accent: "teal" };
 const app = $("#app"), card = $("#card"), snap = $("#snap"), tabsEl = $("#tabs");
 
 /* ---------- card placement: the native page view follows this rectangle ---------- */
@@ -1608,7 +1657,7 @@ const permName = {
   windows: "Window management", other: "Other",
 };
 const permIconId = k => k.startsWith("external:") ? "#p-external" : permWhat[k] ? "#p-" + k : "#i-shield";
-function joinWords(list) { return list.length < 2 ? list.join("") : list.slice(0, -1).join(", ") + " and " + list[list.length - 1]; }
+function joinWords(list) { return list.length < 2 ? list.join("") : list.slice(0, -1).join(", ") + " " + T("and") + " " + list[list.length - 1]; }
 let promptKey = "", promptOrigin = "";
 function renderPrompt(p) {
   const wrap = $("#permWrap"), bar = $("#permBar");
@@ -1625,8 +1674,8 @@ function renderPrompt(p) {
   $("#permIcon").setAttribute("href", permIconId(p.kinds[0]));
   const t = $("#permText"); t.textContent = "";
   const b = document.createElement("b"); b.textContent = p.host || "This site";
-  const w = document.createElement("span"); w.className = "what"; w.textContent = joinWords(words);
-  t.append(b, " wants to ", w);
+  const w = document.createElement("span"); w.className = "what"; w.textContent = joinWords(words.map(x => T(x)));
+  if (LANG === "tr") t.append(b, " ", w, " istiyor"); else t.append(b, " wants to ", w);
   if (p.more) { const m = document.createElement("span"); m.className = "more"; m.textContent = ` · ${p.more} more waiting`; t.append(m); }
   if (had) { bar.classList.remove("swap"); void bar.offsetWidth; bar.classList.add("swap"); }
   wrap.classList.add("open");
@@ -2458,6 +2507,21 @@ document.addEventListener("keydown", e => {
 });
 
 /* ---------- settings ---------- */
+// accent colors: [light theme, dark theme]
+const Accents = { teal: ["#0d9a87", "#35c9b1"], blue: ["#2563eb", "#5b9cff"], purple: ["#7c3aed", "#a78bfa"], pink: ["#db2777", "#f472b6"], orange: ["#ea580c", "#fb923c"], graphite: ["#4b5563", "#a1a7b3"] };
+const darkQuery = matchMedia("(prefers-color-scheme: dark)");
+const alpha = (hex, a) => `rgba(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)}, ${a})`;
+function applyLook() {
+  const dark = darkQuery.matches, c = (Accents[settings.accent] || Accents.teal)[dark ? 1 : 0];
+  document.documentElement.style.setProperty("--accent", c);
+  document.documentElement.style.setProperty("--accent-soft", alpha(c, dark ? 0.16 : 0.12));
+  document.querySelectorAll(".swatches button").forEach(b => b.style.setProperty("--c", Accents[b.dataset.v][dark ? 1 : 0]));
+  app.classList.toggle("compact", settings.density === "compact");
+  $("#homeBtn").hidden = settings.homeButton === "off";
+  $("#scReset").hidden = !settings.customShortcuts;
+  $("#scNote").textContent = T(settings.customShortcuts ? "Hover a shortcut on the start page to edit it." : "Your shortcuts are the sites you visit most.");
+}
+darkQuery.addEventListener("change", applyLook);
 function syncSegs() {
   document.querySelectorAll(".seg").forEach(seg => {
     const v = settings[seg.dataset.key];
@@ -2466,11 +2530,26 @@ function syncSegs() {
     const th = seg.querySelector(".thumb");
     if (on) { th.style.left = on.offsetLeft + "px"; th.style.width = on.offsetWidth + "px"; }
   });
+  document.querySelectorAll(".swatches button").forEach(b => b.classList.toggle("on", b.dataset.v === settings[b.parentElement.dataset.key]));
+  document.querySelectorAll("#settings .switch").forEach(b => b.setAttribute("aria-checked", String(settings[b.dataset.key] !== "off")));
 }
+document.querySelectorAll(".swatches button").forEach(b => b.onclick = () => {
+  settings.accent = b.dataset.v;
+  syncSegs(); applyLook();
+  post({ type: "setting", key: "accent", value: b.dataset.v });
+});
+document.querySelectorAll("#settings .switch").forEach(b => b.onclick = () => {
+  const value = settings[b.dataset.key] === "off" ? "on" : "off";
+  settings[b.dataset.key] = value;
+  syncSegs(); applyLook();
+  post({ type: "setting", key: b.dataset.key, value });
+});
+$("#scReset").onclick = () => post({ type: "setting", key: "shortcuts", value: "reset" });
+$("#setClose").onclick = () => closeOverlay();
 document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
   const key = b.parentElement.dataset.key;
   settings[key] = b.dataset.v;
-  syncSegs();
+  syncSegs(); applyLook();
   if (key === "homeMode") {
     syncHome();
     if (b.dataset.v === "start") { settings.home = ""; post({ type: "setting", key: "home", value: "" }); }
@@ -2520,6 +2599,7 @@ function onMessage(m) {
       syncHome();
       $("#aboutLine").textContent = `Drift ${m.drift || ""} · Chromium ${m.version || ""}`;
       if (app.classList.contains("collapsed") !== !!m.sidebarCollapsed) setCollapsed(!!m.sidebarCollapsed, false);
+      applyLook();
       syncSegs();
       break;
     case "toggleSidebar": setCollapsed(!app.classList.contains("collapsed"), true); break;

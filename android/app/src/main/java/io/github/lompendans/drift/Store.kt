@@ -14,6 +14,7 @@ class Bookmark(val url: String, var title: String, val folder: String = "", var 
 class SessionTab(val url: String, val title: String?, val favicon: String?)
 class SavedPermission(val origin: String, val kind: String, val state: String)
 class DownloadRecord(val id: Long, val url: String, val name: String, val started: Long)
+class Shortcut(val name: String, val url: String)
 
 /** Everything Drift remembers, in state.json in the app's own storage. The names match desktop Drift's state.json. */
 class Store(private val file: File) {
@@ -30,6 +31,12 @@ class Store(private val file: File) {
     val bookmarks = mutableListOf<Bookmark>()
     val permissions = mutableListOf<SavedPermission>()
     val downloads = mutableListOf<DownloadRecord>()
+    var language = "system"
+    var accent = "teal"
+    var startClock = true
+    var startShortcuts = true
+    var startBackground = "glow"
+    var shortcuts: MutableList<Shortcut>? = null   // the user's own start page shortcuts; null shows the most visited sites
 
     companion object {
         val engines = linkedMapOf(
@@ -61,6 +68,12 @@ class Store(private val file: File) {
                 o.optJSONArray("History")?.let { a -> for (i in 0 until a.length()) a.getJSONObject(i).let { h -> h.str("Url")?.let { u -> s.history.add(HistoryItem(u, h.str("Title"), h.str("Favicon"), h.optInt("Visits", 1), time(h.str("Last")))) } } }
                 o.optJSONArray("Bookmarks")?.let { a -> for (i in 0 until a.length()) a.getJSONObject(i).let { b -> b.str("Url")?.let { u -> s.bookmarks.add(Bookmark(u, b.str("Title") ?: u, b.str("Folder") ?: "", b.str("Favicon"), time(b.str("Added")))) } } }
                 o.optJSONArray("Permissions")?.let { a -> for (i in 0 until a.length()) a.getJSONObject(i).let { p -> s.permissions.add(SavedPermission(p.optString("Origin"), p.optString("Kind"), p.optString("State"))) } }
+                s.language = o.str("Language") ?: s.language
+                s.accent = o.str("Accent") ?: s.accent
+                s.startClock = o.optBoolean("StartClock", true)
+                s.startShortcuts = o.optBoolean("StartShortcuts", true)
+                s.startBackground = o.str("StartBackground") ?: s.startBackground
+                o.optJSONArray("Shortcuts")?.let { a -> s.shortcuts = MutableList(a.length()) { a.getJSONObject(it).let { x -> Shortcut(x.optString("Name"), x.optString("Url")) } } }
                 o.optJSONArray("Downloads")?.let { a -> for (i in 0 until a.length()) a.getJSONObject(i).let { d -> s.downloads.add(DownloadRecord(d.optLong("Id"), d.optString("Url"), d.optString("Name"), time(d.str("Started")))) } }
             } catch (e: Exception) { }
             return s
@@ -82,6 +95,8 @@ class Store(private val file: File) {
             o.put("Bookmarks", JSONArray(bookmarks.map { JSONObject().put("Url", it.url).put("Title", it.title).put("Folder", it.folder).put("Favicon", it.favicon).put("Added", iso(it.added)) }))
             o.put("Permissions", JSONArray(permissions.map { JSONObject().put("Origin", it.origin).put("Kind", it.kind).put("State", it.state) }))
             o.put("Downloads", JSONArray(downloads.map { JSONObject().put("Id", it.id).put("Url", it.url).put("Name", it.name).put("Started", iso(it.started)) }))
+            o.put("Language", language).put("Accent", accent).put("StartClock", startClock).put("StartShortcuts", startShortcuts).put("StartBackground", startBackground)
+            o.put("Shortcuts", shortcuts?.let { l -> JSONArray(l.map { JSONObject().put("Name", it.name).put("Url", it.url) }) } ?: JSONObject.NULL)
             val tmp = File(file.path + ".tmp")
             tmp.writeText(o.toString())
             tmp.renameTo(file)
@@ -108,6 +123,16 @@ class Store(private val file: File) {
     fun suggestions(): JSONArray = JSONArray(history.sortedByDescending { it.last }.take(600).map {
         JSONObject().put("url", it.url).put("title", it.title).put("favicon", it.favicon).put("score", it.score)
     })
+
+    /** The start page's shortcuts: the user's own list, or the most visited sites. */
+    fun startShortcutList(): JSONArray {
+        val own = shortcuts ?: return topSites(8)
+        return JSONArray(own.map { s ->
+            val host = try { URI(s.url).host } catch (e: Exception) { null }.orEmpty()
+            val seen = history.find { it.favicon != null && it.url.contains("//$host/") }
+            JSONObject().put("url", s.url).put("name", s.name.ifEmpty { host.removePrefix("www.") }).put("favicon", seen?.favicon ?: JSONObject.NULL)
+        })
+    }
 
     fun topSites(n: Int): JSONArray {
         class G(val host: String, var score: Double, var best: HistoryItem)
