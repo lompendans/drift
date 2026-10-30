@@ -210,6 +210,10 @@
     "use your MIDI devices": "MIDI cihazlarınızı kullanmak", "see what you copy": "kopyaladıklarınızı görmek", "Off for this site": "Bu sitede kapalı",
     "Turn it on in Settings": "Ayarlar'dan açın", "Ads can show on this site": "Bu sitede reklamlar görünebilir", "Open a website to see what's blocked": "Nelerin engellendiğini görmek için bir web sitesi açın",
     "1 tab": "1 sekme", "Couldn't reach GitHub": "GitHub'a ulaşılamadı", "The release has no Android app": "Bu sürümde Android uygulaması yok",
+    // Drift Legacy
+    "<b>Drift Legacy is not safe to use.</b> It runs on an old engine (Chromium {v}) that no longer gets security fixes. Don't use it for banking, shopping, email or passwords.": "<b>Drift Legacy güvenli değildir.</b> Artık güvenlik güncellemesi almayan eski bir motorla (Chromium {v}) çalışır. Bankacılık, alışveriş, e-posta veya şifreler için kullanmayın.",
+    "Drift Legacy · an old engine without security fixes. Don't use it for banking, shopping, email or passwords.": "Drift Legacy · güvenlik güncellemesi almayan eski bir motor. Bankacılık, alışveriş, e-posta veya şifreler için kullanmayın.",
+    "Hide until Drift restarts": "Drift yeniden başlayana kadar gizle",
     "Reset shortcuts to most visited": "Kısayolları en çok ziyaret edilenlere sıfırla", "Shortcuts reset": "Kısayollar sıfırlandı", "Tap ⋮ on a shortcut on the start page to edit it.": "Düzenlemek için başlangıç sayfasındaki bir kısayolda ⋮ simgesine dokunun.",
   };
 
@@ -259,6 +263,7 @@
     [/^Couldn't import from (.+): (.+)$/, "$1 tarayıcısından içe aktarılamadı: $2"],
     [/^([\d.,]+) pages? of history \(([\d.,]+) new\)$/, "$1 geçmiş sayfası ($2 yeni)"], [/^([\d.,]+) pages? of history$/, "$1 geçmiş sayfası"],
     [/^([\d.,]+) bookmarks? \(([\d.,]+) new\)$/, "$1 yer imi ($2 yeni)"], [/^([\d.,]+) bookmarks?$/, "$1 yer imi"],
+    [/^From (Google Chrome|Microsoft Edge|Firefox|Brave|Opera GX|Opera|Vivaldi|Chromium)( (.+))?$/, "$1$2 tarayıcısından"],
     [/^Imported from (.+)$/, "$1 tarayıcısından içe aktarıldı"],
     [/^Drift (.+) is ready\. Restart to update\.$/, "Drift $1 hazır. Güncellemek için yeniden başlatın."],
     [/^Downloading Drift (.+)…$/, "Drift $1 indiriliyor…"], [/^Drift (.+) is ready$/, "Drift $1 hazır"], [/^Drift (.+) is out$/, "Drift $1 çıktı"],

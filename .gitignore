@@ -11,3 +11,6 @@ android/app/build/
 android/local.properties
 android/.kotlin/
 signing/
+legacy/node_modules/
+legacy/stage/
+legacy/out/

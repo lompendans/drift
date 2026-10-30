@@ -1,0 +1,16 @@
+﻿{
+  "name": "drift-legacy-build",
+  "private": true,
+  "description": "Builds Drift Legacy (Drift on an older Electron, for Windows 7/8/8.1, 32-bit Windows and 32-bit Linux) from ../app",
+  "scripts": {
+    "stage": "node build.js stage",
+    "start": "node build.js stage && electron stage"
+  },
+  "dependencies": {
+    "sql.js": "1.13.0"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "22.3.27"
+  }
+}

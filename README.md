@@ -113,6 +113,21 @@ Or download a file yourself:
 
 Works on Android 8 and newer. Drift for Android draws pages with Android System WebView, the Chromium engine that's already on your phone (Google Play keeps it updated), which is why it's so small. It updates itself: when a new version is out, About Drift shows **Install**.
 
+### Drift Legacy: old computers (not safe)
+
+> [!WARNING]
+> Drift Legacy runs on old Chromium engines (108 on Windows, 100 on Linux) that stopped getting security fixes years ago. Websites can attack them in ways a current browser blocks. **Don't use it for banking, shopping, email or passwords.** If your computer can run a current browser, use that instead.
+
+Drift Legacy is the same Drift for computers new Drift can't run on. Unzip it and open `Drift Legacy.exe` (Windows) or `drift-legacy` (Linux).
+
+| Download | For |
+|---|---|
+| [Drift-Legacy-windows-ia32.zip](https://github.com/lompendans/drift/releases/latest/download/Drift-Legacy-windows-ia32.zip) | 32-bit Windows 7, 8, 8.1, 10 and 11 |
+| [Drift-Legacy-windows-x64.zip](https://github.com/lompendans/drift/releases/latest/download/Drift-Legacy-windows-x64.zip) | 64-bit Windows 7, 8 and 8.1 |
+| [Drift-Legacy-linux-ia32.tar.gz](https://github.com/lompendans/drift/releases/latest/download/Drift-Legacy-linux-ia32.tar.gz) | 32-bit Linux |
+
+It keeps its own settings and data, separate from Drift, and shows a warning on every screen. It tells you when a new version is out, but doesn't update itself. A few things don't work on the old engines: page corners are always square, and on 32-bit Linux sites can't share your screen.
+
 ### Updating
 
 Drift checks for a new version when it starts and every few hours. It downloads in the background, is checked against its SHA-256 checksum, and installs when you close Drift (or right away from the update button in the toolbar). Your tabs come back where you left them.
@@ -161,6 +176,7 @@ Drift has no account, no sign-in and no analytics, and there's no Drift server t
 - **Extensions:** Drift runs Chrome extensions with Electron's extension support, which covers less than Chrome does. Extensions that change pages (dark modes, page tweaks, content blockers) work best; ones that need newer Chrome features, such as capturing a tab's sound, may not. The install buttons on store pages don't work in Drift; use the "Add to Drift" bar that Drift shows above the store page instead.
 - **Passwords** can't be imported from other browsers (they're encrypted to each browser), so you sign in to sites once in Drift.
 - **macOS and iPhone** aren't built yet.
+- **Windows 7, 8, 8.1 and 32-bit computers** only have [Drift Legacy](#drift-legacy-old-computers-not-safe), which isn't safe for sensitive sites.
 - **Android:** there are no extensions (Android's WebView doesn't run them), and websites can't show notifications. A site's own `alert()` and `confirm()` boxes are drawn by Android in Drift's style rather than by Drift's web interface, because Android pauses every web view in an app while a page waits for an answer.
 - **Size:** Drift 2 carries its own copy of Chromium, so it's about 160 MB to download. (Drift 1 was about 1 MB because it borrowed Windows' Edge WebView2, which also tied it to Windows.)
 
@@ -185,10 +201,11 @@ That runs Drift from source with your normal Drift profile. To try changes witho
 |---|---|---|
 | `.\build-release.ps1 -Version 2.0.1` | `release/DriftSetup.exe`, `release/Drift-online-setup.exe`, `release/Drift-portable.zip` | Windows, Node.js, the [.NET SDK](https://dotnet.microsoft.com/download) (for the installer) |
 | `.\build-linux.ps1` | `release/Drift-x86_64.AppImage`, `release/drift_amd64.deb`, `release/Drift-linux-x64.tar.gz` | [Docker](https://www.docker.com/) (it builds inside a Linux container) |
+| `.\build-legacy.ps1` | `release/Drift-Legacy-*` (Windows 32/64-bit .zip, Linux 32-bit .tar.gz) | Node.js and Docker Desktop |
 | `.\build-android.ps1` | `release/Drift-android.apk` | The Android SDK (Android Studio installs it) and Drift's signing key in `signing/` (see below) |
 | `node build/package.js linux x64` (in `app/`) | An unpacked Linux build in `app/out/` | Node.js; run on Linux to keep file permissions |
 
-The file names never change between versions, so `releases/latest/download/<name>` links keep working and the updater can find them. Publish all seven files on a release tagged `v<version>`.
+The file names never change between versions, so `releases/latest/download/<name>` links keep working and the updater can find them. Publish all seven files (ten with Drift Legacy) on a release tagged `v<version>`.
 
 The Android app must always be signed with the same key, or phones refuse to install an update over the old version. The key isn't in this repository: `build-android.ps1` reads it from `signing/keystore.properties` (or the file `DRIFT_KEYSTORE` points to). Builds from a fork need their own key and a different `applicationId`.
 
@@ -216,6 +233,7 @@ app/                      Drift itself (Electron)
   pages/                  the start page and the "dangerous site" warning
   build/                  icons, packaging (package.js) and the Linux build (linux.sh)
   test/                   a test hook for driving Drift from scripts (only loaded from source)
+legacy/                   Drift Legacy: build.js adapts app/ for Electron 22 and 18; legacy.js fills in what those lack
 installer/                DriftSetup.exe: the Windows installer and updater (C#, .NET Framework 4.8)
 android/                  Drift for Android (Kotlin + Android System WebView)
   app/src/main/assets/ui/mobile.html   the phone interface: bar, tab grid, menus, panels

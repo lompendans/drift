@@ -176,6 +176,9 @@ code { font: 13.5px "Cascadia Mono", Consolas, monospace; padding: 1px 5px; bord
 .alts a:hover { color: var(--accent); }
 footer { padding: 40px 0 48px; color: var(--faint); font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
 footer a { color: var(--muted); }
+.legacy-box { margin-top: 18px; padding: 16px 18px; border-radius: 14px; background: rgba(255, 176, 32, 0.14); border: 1px solid rgba(255, 176, 32, 0.4); }
+.legacy-box > b { display: block; margin-bottom: 6px; }
+.legacy-box p { margin: 0 0 10px; }
 </style>
 </head>
 <body>
@@ -304,9 +307,15 @@ footer a { color: var(--muted); }
           <tr><td>Android 8 and newer</td><td class="y">Yes (.apk)</td></tr>
           <tr><td>Windows on ARM</td><td class="y">Yes, through Windows' x64 emulation</td></tr>
           <tr><td>macOS, iPhone</td><td class="n">Not yet</td></tr>
-          <tr><td>Windows 7, 8 and 8.1, 32-bit Windows</td><td class="n">No</td></tr>
+          <tr><td>Windows 7, 8 and 8.1, 32-bit Windows, 32-bit Linux</td><td class="n">Only <a href="#legacy">Drift Legacy</a> (not safe)</td></tr>
         </table>
         <p class="note">On Windows and Linux, Drift brings its own Chromium engine, so there's nothing else to install. Drift 1.x updates itself to 2.0.</p>
+      </div>
+      <div class="legacy-box" id="legacy">
+        <b>Drift Legacy: for old computers, and not safe</b>
+        <p>Drift Legacy is the same Drift on the last engines that still run on Windows 7, 8 and 8.1, 32-bit Windows and 32-bit Linux. Those engines (Chromium 108 and 100) stopped getting security fixes years ago, so websites can attack them in ways a current browser blocks. <strong>Don't use it for banking, shopping, email or passwords</strong>, and use a current browser if your computer can run one. More and more sites will also stop working on it.</p>
+        <div class="alts"><a href="https://github.com/lompendans/drift/releases/latest/download/Drift-Legacy-windows-ia32.zip">Windows, 32-bit (.zip)</a><a href="https://github.com/lompendans/drift/releases/latest/download/Drift-Legacy-windows-x64.zip">Windows 7/8/8.1, 64-bit (.zip)</a><a href="https://github.com/lompendans/drift/releases/latest/download/Drift-Legacy-linux-ia32.tar.gz">Linux, 32-bit (.tar.gz)</a></div>
+        <p class="note">Unzip it and open <code>Drift Legacy.exe</code> (Windows) or <code>drift-legacy</code> (Linux). It keeps its own settings, separate from Drift, and tells you when a new version is out.</p>
       </div>
     </div>
   </section>
@@ -322,6 +331,7 @@ footer a { color: var(--muted); }
     <details><summary>Can I use Drift without installing it?</summary><p>Yes. Download the portable .zip, unzip it anywhere and open <code>Drift.exe</code>. It updates itself in place, too.</p></details>
     <details><summary>Do Chrome extensions work?</summary><p>Many do. Open an extension on the Chrome Web Store or Edge Add-ons in Drift and click "Add to Drift" in the bar above the page. Drift shows what the extension can do before adding it. Simple extensions, like dark modes and page tweaks, work best; ones that need newer Chrome-only features, like capturing a tab's sound, may not.</p></details>
     <details><summary>Can I bring my bookmarks and history?</summary><p>Yes. Go to Settings → Your data → Import bookmarks and history, and pick Chrome, Edge, Firefox, Brave, Opera or Vivaldi. It works even while that browser is open, and doesn't change it. Passwords can't be imported, so you'll sign in to sites once in Drift.</p></details>
+    <details><summary>Does Drift run on Windows 7 or a 32-bit computer?</summary><p>Not Drift itself: its engine needs 64-bit Windows 10 or newer, or 64-bit Linux. For older computers there's <a href="#legacy">Drift Legacy</a>, built on the last engines that run there. Those engines no longer get security fixes, so Drift Legacy isn't safe for banking, shopping, email or passwords.</p></details>
     <details><summary>Is the source code available?</summary><p>Yes. Drift is open source under the MIT license: <a href="https://github.com/lompendans/drift">github.com/lompendans/drift</a>. The README explains how to build it yourself.</p></details>
     <details><summary>How do I uninstall it?</summary><p>On Windows: Settings → Apps → Installed apps → Drift → Uninstall. You can choose to keep or delete your history and settings. On Linux: run the install command with <code>--uninstall</code> at the end (see Install above), or remove the <code>drift</code> package.</p></details>
   </section>
